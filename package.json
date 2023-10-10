@@ -1,6 +1,6 @@
 {
-    "name": "@patrick115/create_app",
-    "version": "1.0.0",
+    "name": "@patrick115/create-app",
+    "version": "1.0.1",
     "description": "Create a SvelteKit/TypeScript/Discord Bot app",
     "bin": "lib/index.js",
     "scripts": {
