@@ -3,5 +3,5 @@
 Create a SvelteKit/TypeScript/Discord Bot app
 
 ```BASH
-npm create @patrick115/app
+npm create @patrick115/app@latest
 ```
