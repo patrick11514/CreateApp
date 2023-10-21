@@ -108,6 +108,8 @@ const main = async () => {
         .readdirSync(Path.join(__dirname, 'projects'))
         .filter((p) => p.endsWith('.js') || p.endsWith('.ts'))
 
+    _('text', 'Loding projects...')
+
     const instances: Array<{
         name: string
         key: string
