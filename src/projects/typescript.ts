@@ -189,16 +189,31 @@ yarn.lock`
                 })
             }
 
-            fs.writeFileSync(
-                Path.join(typesFolder, 'env.d.ts'),
-                `declare global {
+            if (dependencies.includes('zod')) {
+                fs.writeFileSync(
+                    Path.join(typesFolder, 'env.ts'),
+                    `import { config } from 'dotenv'
+import { z } from 'zod'
+config()
+
+const schema = z.object({
+
+})
+
+export const env = schema.parse(process.env)`
+                )
+            } else {
+                fs.writeFileSync(
+                    Path.join(typesFolder, 'env.d.ts'),
+                    `declare global {
     namespace NodeJS {
         interface ProcessEnv {
         }
     }
 }
 export {}`
-            )
+                )
+            }
         }
 
         fs.writeFileSync(
