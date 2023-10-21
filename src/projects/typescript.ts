@@ -109,6 +109,7 @@ export default {
             } else {
                 packages.push('node-fetch@2')
             }
+            devPackages.push('@types/node-fetch')
         }
 
         if (dependencies.includes('express')) {
