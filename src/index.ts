@@ -114,7 +114,7 @@ const main = async () => {
         function: (path: string, name: string) => Promisable<void>
     }> = []
     for (const p of projects) {
-        const loaded = require(Path.join(__dirname, 'projects', 'svelte'))
+        const loaded = require(Path.join(__dirname, 'projects', p))
         if (!loaded) throw 'Unable to load module ' + p
         const instance = loaded.default
         instances.push(instance)
