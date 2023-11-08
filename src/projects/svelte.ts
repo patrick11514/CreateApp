@@ -106,7 +106,7 @@ yarn.lock`
         fs.appendFileSync(Path.join(path, '.gitignore'), gitignore)
 
         const { tools } = await enquirer.prompt<{
-            tools: ('tailwindcss' | 'default' | 'authme' | 'cookies' | 'mysql')[]
+            tools: ('tailwindcss' | 'default' | 'authme' | 'cookies' | 'kysely' | 'kysely-codegen')[]
         }>({
             name: 'tools',
             type: 'multiselect',
@@ -132,15 +132,21 @@ yarn.lock`
                     hint: 'Library for handling sessions with JWT Token',
                 },
                 {
-                    message: 'MySQL Lib',
-                    name: 'mysql',
-                    hint: 'MySQL Lib for handling connections',
+                    message: 'Kysely',
+                    name: 'kysely',
+                    hint: 'The type-safe SQL query builder for TypeScript',
+                },
+                {
+                    message: 'Kysely-Codegen',
+                    name: 'kysely-codegen',
+                    hint: "kysely-codegen generates Kysely type definitions from your database. That's it.",
                 },
             ],
         })
 
-        _('text', 'Creating prettier config...')
         if (features.includes('prettier')) {
+            _('text', 'Creating prettier config...')
+
             fs.writeFileSync(
                 Path.join(path, '.prettierrc'),
                 `{
@@ -163,8 +169,8 @@ yarn.lock`
             fs.mkdirSync(Path.join(path, 'src', 'lib', 'server'))
         }
 
-        _('text', 'Adding tailwindcss...')
         if (tools.includes('tailwindcss')) {
+            _('text', 'Adding tailwindcss...')
             devPackages = devPackages.concat(['tailwindcss', 'postcss', 'autoprefixer', 'prettier-plugin-tailwindcss'])
 
             //tailwind config
@@ -228,7 +234,7 @@ HOST=0.0.0.0
 PORT=5178
 ORIGIN=http://localhost:5178`
 
-            if (tools.includes('mysql')) {
+            if (tools.includes('kysely')) {
                 env += `\n#database config
 DATABASE_IP=10.10.10.223
 DATABASE_PORT=3306
@@ -292,8 +298,8 @@ export const isOk = (data: Response | unknown): data is Response => {
             )
         }
 
-        _('text', 'Adding authme...')
         if (tools.includes('authme')) {
+            _('text', 'Adding authme...')
             packages.push('bcrypt')
             devPackages.push('@types/bcrypt')
 
@@ -308,8 +314,8 @@ export const isOk = (data: Response | unknown): data is Response => {
             fs.writeFileSync(Path.join(serverPath, 'authme', 'main.ts'), data)
         }
 
-        _('text', 'Adding cookies...')
         if (tools.includes('cookies')) {
+            _('text', 'Adding cookies...')
             packages = packages.concat(['async-lz-string', 'jsonwebtoken', 'simple-json-db', 'uuid'])
             devPackages = devPackages.concat(['@types/uuid', '@types/jsonwebtoken'])
 
@@ -331,39 +337,66 @@ export const jwt = new JWTCookies(JWT_SECRET)\n`
             )
         }
 
-        _('text', 'Adding mysql...')
-        if (tools.includes('mysql')) {
-            packages.push('mariadb')
+        if (tools.includes('kysely')) {
+            _('text', 'Adding kysely...')
+            packages.push('kysely')
+            packages.push('mysql2')
 
-            const request = await fetch(
-                'https://raw.githubusercontent.com/patrick11514/MyStuff/main/LIBS/src/mysql/main.ts'
-            )
-            const data = await request.text()
             const serverPath = Path.join(path, 'src', 'lib', 'server')
-            if (!fs.existsSync(Path.join(serverPath, 'mysql'))) {
-                fs.mkdirSync(Path.join(serverPath, 'mysql'))
-            }
-            fs.writeFileSync(Path.join(serverPath, 'mysql', 'main.ts'), data)
 
             fs.appendFileSync(
                 Path.join(serverPath, 'variables.ts'),
-                `import {
-    DATABASE_IP,
-    DATABASE_PASSWORD,
-    DATABASE_PORT,
-    DATABASE_USER
-} from '$env/static/private';
-import { MySQL } from './mysql/main';
+                `import { DATABASE_DATABASE, DATABASE_IP, DATABASE_PASSWORD, DATABASE_PORT, DATABASE_USER, JWT_SECRET } from '$env/static/private'
+import type { Database } from '$types/types'
+import { Kysely, MysqlDialect } from 'kysely'
+import { createPool } from 'mysql2'
 
-export const conn = new MySQL({
-    host: DATABASE_IP,
-    port: parseInt(DATABASE_PORT),
-    user: DATABASE_USER,
-    password: DATABASE_PASSWORD
-});
 
-conn.connect();\n`
+const dialect = new MysqlDialect({
+    pool: createPool({
+        host: DATABASE_IP,
+        port: parseInt(DATABASE_PORT),
+        user: DATABASE_USER,
+        password: DATABASE_PASSWORD,
+        database: DATABASE_DATABASE
+    })
+})
+
+export const conn = new Kysely<Database>({
+    dialect
+})\n`
             )
+
+            const typesPath = Path.join(path, 'src', 'types')
+            if (!fs.existsSync(typesPath)) {
+                fs.mkdirSync(typesPath)
+            }
+
+            fs.writeFileSync(
+                Path.join(typesPath, 'types.ts'),
+                `import type { Generated, Insertable, Selectable, Updateable } from 'kysely'
+export interface Database {
+    example: exampleTable
+}
+
+export interface exampleTable {
+    id: Generated<number>
+    name: string
+}
+
+export type Example = Selectable<exampleTable>
+export type NewExample = Insertable<exampleTable>
+export type ExampleUpdate = Updateable<exampleTable>`
+            )
+        }
+
+        if (tools.includes('kysely-codegen')) {
+            _('text', 'Adding kysely-codegen...')
+            devPackages.push('kysely-codegen')
+
+            if (!packages.includes('mysql2')) {
+                devPackages.push('mysql2')
+            }
         }
 
         //edit package.json
@@ -480,12 +513,17 @@ ${
         ? 'Start builded app using `npm run start` with [Node Adapter](https://kit.svelte.dev/docs/adapter-node) or config command in package.json using your own [Adapter](https://kit.svelte.dev/docs/adapters)'
         : ''
 } 
-
+${
+    fs.existsSync(Path.join(path, '.env.example'))
+        ? `
 ## Example ENV file (.env.example)
 
 \`\`\`YAML
 ${fs.readFileSync(Path.join(path, '.env.example'))}
-\`\`\``
+\`\`\`
+`
+        : ''
+}`
         )
 
         _('text', 'Installing packages...')
@@ -511,7 +549,16 @@ ${fs.readFileSync(Path.join(path, '.env.example'))}
         const svelteJS = fs.readFileSync(Path.join(path, 'svelte.config.js'))
         fs.writeFileSync(
             Path.join(path, 'svelte.config.js'),
-            svelteJS.toString().replace(/@sveltejs\/adapter-auto/g, `@sveltejs/adapter-${adapter}`)
+            svelteJS
+                .toString()
+                .replace(/@sveltejs\/adapter-auto/g, `@sveltejs/adapter-${adapter}`)
+                .replace(
+                    'adapter: adapter()',
+                    `adapter: adapter(),
+        alias: {
+            '$types/*': 'src/types/*',
+        }`
+                )
         )
 
         await _c(_p(arr), path)
@@ -523,8 +570,10 @@ ${fs.readFileSync(Path.join(path, '.env.example'))}
             await _c(`${packageProgram} update -L`, path)
         }
 
-        _('text', 'Formatting...')
-        await _c(`${packageProgram} format`, path)
+        if (features.includes('prettier')) {
+            _('text', 'Formatting...')
+            await _c(`${packageProgram} format`, path)
+        }
 
         const { git } = await enquirer.prompt<{ git: boolean }>({
             name: 'git',
