@@ -59,10 +59,9 @@ const argumenents = process.argv.slice(2, process.argv.length)
 export let packageProgram: 'npm' | 'pnpm' | 'yarn' = 'npm'
 
 const main = async () => {
-    _(
-        'text',
-        `Welcome in ${clc.redBright('Create Patrick115 App')} version ${clc.yellow(process.env.npm_package_version)}`
-    )
+    const pkg = require(Path.join(__dirname, '..', 'package.json'))
+
+    _('text', `Welcome in ${clc.redBright('Create Patrick115 App')} version ${clc.yellow(pkg?.version)}`)
 
     let currentPath = process.env.PWD as string
 
