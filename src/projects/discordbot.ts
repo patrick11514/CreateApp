@@ -344,9 +344,9 @@ client.login(env.BOT_SECRET)`
         })
 
         if (git) {
-            await _c('git init')
-            await _c('git add .')
-            await _c("git commit -m 'Initial commit'")
+            await _c('git init', path)
+            await _c('git add .', path)
+            await _c("git commit -m 'Initial commit'", path)
         }
 
         _('text', clc.green('Instalation complete'))
