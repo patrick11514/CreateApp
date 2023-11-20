@@ -186,11 +186,38 @@ export default {
             _moduleAliases: Record<string, string>
         }
 
+        const mkdirFolders = []
+
+        if (dependencies.includes('simple-json-db')) {
+            mkdirFolders.push('./databases')
+        }
+
+        if (extensions) {
+            mkdirFolders.push('./logs')
+        }
+
         packageJson.name = name
-        packageJson.scripts.dev = 'ts-node-dev --respawn ./src/index.ts'
-        packageJson.scripts.build = 'mkdir -p build && tsc'
-        packageJson.scripts.start = 'node ./build/index.js'
+        packageJson.scripts.dev = ''
+        if (mkdirFolders.length > 0) {
+            packageJson.scripts.folders = 'mkdir -p ' + mkdirFolders.join(' ')
+            packageJson.scripts.dev += 'npm run folders && '
+        }
+        packageJson.scripts.dev += `ts-node-dev${
+            dependencies.includes('paths') ? ' -r tsconfig-paths/register ' : ' '
+        }--respawn --rs ./src/index.ts`
+        packageJson.scripts.build = `mkdir -p build${mkdirFolders.length > 0 ? ' && npm run folders ' : ' '}&& tsc`
+        packageJson.scripts.start = `node${
+            dependencies.includes('paths') ? ' -r module-alias/register ' : ' '
+        }./build/index.js`
         packageJson.scripts.clear = 'rm -rf build'
+        if (features.includes('example')) {
+            packageJson.scripts.registerCommandsDev = `ts-node-dev ${
+                dependencies.includes('paths') ? '-r tsconfig-paths/register ' : ''
+            }./src/registerCommands.ts`
+            packageJson.scripts.registerCommands = `node ${
+                dependencies.includes('paths') ? '-r module-alias/register ' : ''
+            }./build/registerCommands.js`
+        }
 
         if (dependencies.includes('paths')) {
             packageJson._moduleAliases = {
@@ -329,6 +356,7 @@ const intents: GatewayIntentBits[] = [
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.MessageContent,
 ]
 
 //Partials
@@ -477,6 +505,53 @@ export default {
             )
 
             fs.writeFileSync(Path.join(path, 'src', 'types', 'types.ts'), `export type Awaitable<T> = T | Promise<T>`)
+
+            fs.writeFileSync(
+                Path.join(path, 'src', 'registerCommands.ts'),
+                `${extensions ? `import Logger from '$lib/logger'\n` : ''}${
+                    dependencies.includes('dotenv') ? `import { env } from '$types/env'\n` : ''
+                }import { REST, Routes, SlashCommandBuilder } from 'discord.js'
+
+const rest = new REST({ version: '10' }).setToken(${dependencies.includes('dotenv') ? 'env.BOT_SECRET' : "'BOT_TOKEN'"})
+
+const rawCommands = [
+    new SlashCommandBuilder()
+        .setName('example')
+        .setDescription('Example text')
+        .setDescriptionLocalizations({ cs: 'Ukázkový text', 'en-US': 'Example text' })
+        .addNumberOption((option) => {
+            return option
+                .setName('id')
+                .setDescription('Example id')
+                .setDescriptionLocalizations({ cs: 'Ukázkové id', 'en-US': 'Example id' })
+                .setRequired(true)
+        }),
+    
+] as SlashCommandBuilder[]
+
+const json = rawCommands.map((command) => command.toJSON())
+
+${
+    extensions
+        ? `const l = new Logger('RegisterCommands', 'yellow')
+l.start('Registering commands...')`
+        : ''
+}
+
+rest.put(Routes.applicationCommands(env.BOT_ID), { body: json })
+    .then(() => {
+        ${extensions ? `l.stop('Successfully registered commands')` : "console.log('Successfully registered commands')"}
+    })
+    .catch((err) => {
+        ${
+            extensions
+                ? `l.error('Failed to register commands')
+        l.stopError(err)`
+                : "console.error('Failed to register commands', err)"
+        }
+    })
+            `
+            )
         }
 
         _('text', 'Installing packages...')
