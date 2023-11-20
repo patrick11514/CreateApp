@@ -10,9 +10,19 @@ export default {
     function: async (path: string, name: string) => {
         _('text', `You selected: ${clc.red('Discord Bot in discord.js')}`)
 
-        const { extensions, dependencies } = await enquirer.prompt<{
+        const { extensions, dependencies, features } = await enquirer.prompt<{
             extensions: boolean
-            dependencies: ('simple-json-db' | 'mariadb' | 'node-fetch' | 'express' | 'prettier' | 'dotenv' | 'zod')[]
+            dependencies: (
+                | 'simple-json-db'
+                | 'mariadb'
+                | 'node-fetch'
+                | 'express'
+                | 'prettier'
+                | 'dotenv'
+                | 'zod'
+                | 'paths'
+            )[]
+            features: 'example'[]
         }>([
             {
                 name: 'extensions',
@@ -51,6 +61,21 @@ export default {
                     {
                         message: 'Zod',
                         name: 'zod',
+                    },
+                    {
+                        message: 'Custom paths',
+                        name: 'paths',
+                    },
+                ],
+            },
+            {
+                name: 'features',
+                type: 'multiselect',
+                message: 'Which features do you want to install?',
+                choices: [
+                    {
+                        message: 'Example Command',
+                        name: 'example',
                     },
                 ],
             },
@@ -140,6 +165,11 @@ export default {
             packages.push('zod')
         }
 
+        if (dependencies.includes('paths')) {
+            devPackages.push('tsconfig-paths')
+            packages.push('module-alias')
+        }
+
         //create package.json
         await _c(`${packageProgram} init ${packageProgram != 'pnpm' ? '-y' : ''}`, path)
 
@@ -153,6 +183,7 @@ export default {
             devDependencies: Record<string, string>
             dependencies: Record<string, string>
             type: 'module' | 'commonjs'
+            _moduleAliases: Record<string, string>
         }
 
         packageJson.name = name
@@ -160,6 +191,12 @@ export default {
         packageJson.scripts.build = 'mkdir -p build && tsc'
         packageJson.scripts.start = 'node ./build/index.js'
         packageJson.scripts.clear = 'rm -rf build'
+
+        if (dependencies.includes('paths')) {
+            packageJson._moduleAliases = {
+                $types: './build/types',
+            }
+        }
 
         if (dependencies.includes('prettier')) {
             packageJson.scripts.format = 'prettier --write .'
@@ -239,6 +276,13 @@ export {}`
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true,
+        ${
+            dependencies.includes('paths')
+                ? `"paths": {
+            "$types/*": ["./src/types/*"]
+        }`
+                : ''
+        }
     },
     "include": [
         "src/**/*"
@@ -269,6 +313,14 @@ export {}
             `import { Client, GatewayIntentBits, Partials } from 'discord.js'
 import { env } from './types/env'
 ${extensions ? "import Logger from './lib/logger'" : ''}
+${
+    features.includes('example')
+        ? `import { Awaitable } from '$types/types'
+import fs from 'node:fs'
+import path from 'path'
+import { DiscordEvent } from './hooks'`
+        : ''
+}
 
 //Intends
 const intents: GatewayIntentBits[] = [
@@ -297,6 +349,13 @@ const client = new Client({
 process.client = client
 
 //event handlers
+${
+    features.includes('example')
+        ? `const starts: (() => Awaitable<void>)[] = []
+const events: DiscordEvent<any>[] = []
+`
+        : ''
+}
 client.on("ready", () => {
     ${
         extensions
@@ -304,6 +363,49 @@ client.on("ready", () => {
             : `console.log(\`Logged in as \${client.user?.username}#\${client.user?.discriminator} (\${client.user?.id})\`\`)`
     }
 })
+
+${
+    features.includes('example')
+        ? `
+//load events frol files
+const files = fs
+    .readdirSync(path.join(__dirname, 'functions'))
+    .filter((file) => file.endsWith('.ts') || file.endsWith('.js'))
+
+files.forEach((file) => {
+    const required = require(path.join(__dirname, 'functions', file))
+
+    if (!('default' in required)) {
+        l.error(\`File \${file} is missing default export\`)
+        return
+    }
+
+    const exp: {
+        events: DiscordEvent<any>[]
+        start?: () => Awaitable<void>
+    } = required.default
+
+    const start = exp.start
+
+    if (start !== undefined) {
+        starts.push(start)
+    }
+
+    exp.events.forEach((ev) => {
+        events.push(ev)
+    })
+})
+
+let evs = 0
+events.forEach((ev) => {
+    const { event, callback } = ev.get()
+    client.on(event, callback)
+    evs++
+})
+
+l.log(\`Registered \${clc.blue(evs)} events\`)`
+        : ''
+}
 
 //login
 client.login(env.BOT_SECRET)`
@@ -330,6 +432,10 @@ client.login(env.BOT_SECRET)`
                     }
                 })
             )
+
+        if (features.includes('example')) {
+            await _c('mkdir', path)
+        }
 
         _('text', 'Installing packages...')
         await _c(_p(pkgs), path)
