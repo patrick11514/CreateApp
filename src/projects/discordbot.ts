@@ -311,14 +311,15 @@ export {}
         fs.writeFileSync(
             Path.join(path, 'src', 'index.ts'),
             `import { Client, GatewayIntentBits, Partials } from 'discord.js'
-import { env } from './types/env'
+${dependencies.includes('dotenv') ? `import { env } from './types/env'` : ''}
 ${extensions ? "import Logger from './lib/logger'" : ''}
 ${
     features.includes('example')
         ? `import { Awaitable } from '$types/types'
 import fs from 'node:fs'
 import path from 'path'
-import { DiscordEvent } from './hooks'`
+import { DiscordEvent } from './hooks'
+import clc from 'cli-color'`
         : ''
 }
 
@@ -403,12 +404,12 @@ events.forEach((ev) => {
     evs++
 })
 
-l.log(\`Registered \${clc.blue(evs)} events\`)`
+${extensions ? `l.log(\`Registered \${clc.blue(evs)} events\`)` : ''}`
         : ''
 }
 
 //login
-client.login(env.BOT_SECRET)`
+client.login(${dependencies.includes('dotenv') ? 'env.BOT_SECRET' : "'SECRET_TOKEN'"})`
         )
 
         const pkgs = packages
@@ -434,7 +435,48 @@ client.login(env.BOT_SECRET)`
             )
 
         if (features.includes('example')) {
-            await _c('mkdir', path)
+            await _c('mkdir -p src/functions', path)
+
+            fs.writeFileSync(
+                Path.join(path, 'src', 'functions', 'ping.ts'),
+                `import { DiscordEvent } from '../hooks'
+
+export default {
+    events: [
+        new DiscordEvent('messageCreate', (msg) => {
+            if (msg.content === 'ping' && !msg.author.bot) {
+                msg.reply('Pong!')
+            }
+        }),
+    ],
+}`
+            )
+
+            fs.writeFileSync(
+                Path.join(path, 'src', 'hooks.ts'),
+                `import { Awaitable } from '$types/types'
+                import { ClientEvents } from 'discord.js'
+                
+                export class DiscordEvent<T extends keyof ClientEvents> {
+                    event: T
+                    callback: (...args: ClientEvents[T]) => Awaitable<void>
+                
+                    constructor(event: T, callback: (...args: ClientEvents[T]) => Awaitable<void>) {
+                        this.event = event
+                        this.callback = callback
+                    }
+                
+                    get() {
+                        return {
+                            event: this.event,
+                            callback: this.callback,
+                        }
+                    }
+                }
+                `
+            )
+
+            fs.writeFileSync(Path.join(path, 'src', 'types', 'types.ts'), `export type Awaitable<T> = T | Promise<T>`)
         }
 
         _('text', 'Installing packages...')
