@@ -10,10 +10,11 @@ export default {
     function: async (path: string, name: string) => {
         _('text', `You selected: ${clc.red('Svelte Application')}`)
 
-        const { type, checking, features } = await enquirer.prompt<{
+        const { type, checking, features, svelte_5_beta } = await enquirer.prompt<{
             type: 'default' | 'skeleton' | 'skeletonlib'
             checking: 'checkjs' | 'typescript' | 'nulll'
             features: ('eslint' | 'prettier' | 'playwright' | 'vitest')[]
+            svelte_5_beta: boolean
         }>([
             {
                 name: 'type',
@@ -79,6 +80,11 @@ export default {
                     },
                 ],
             },
+            {
+                name: 'svelte_5_beta',
+                type: 'confirm',
+                message: 'Use svelte beta?',
+            },
         ])
 
         let createCommand = `${packageProgram} create svelte-with-args --name=${name} --directory=./ `
@@ -87,7 +93,8 @@ export default {
         createCommand += `--prettier=${features.includes('prettier')} `
         createCommand += `--eslint=${features.includes('eslint')} `
         createCommand += `--playwright=${features.includes('playwright')} `
-        createCommand += `--vitest=${features.includes('vitest')}`
+        createCommand += `--vitest=${features.includes('vitest')} `
+        createCommand += `--svelte5=${svelte_5_beta}`
 
         _('text', clc.green('Creating Svelte Project...'))
         await _c(createCommand, path)

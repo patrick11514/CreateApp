@@ -1,6 +1,6 @@
 {
     "name": "@patrick115/create-app",
-    "version": "1.0.5-a",
+    "version": "1.0.6",
     "description": "Create a SvelteKit/TypeScript/Discord Bot app",
     "bin": "bin.js",
     "scripts": {
@@ -20,11 +20,11 @@
         "node-fetch": "^3.3.2"
     },
     "devDependencies": {
-        "@types/cli-color": "^2.0.3",
-        "@types/inquirer": "^9.0.3",
-        "@types/node": "^20.8.2",
+        "@types/cli-color": "^2.0.6",
+        "@types/inquirer": "^9.0.7",
+        "@types/node": "^20.10.4",
         "ts-node-dev": "^2.0.0",
-        "typescript": "^5.2.2"
+        "typescript": "^5.3.3"
     },
     "repository": {
         "type": "git",
