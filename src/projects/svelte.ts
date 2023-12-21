@@ -249,6 +249,10 @@ DATABASE_USER=superclovek
 DATABASE_PASSWORD=tajnyheslo123456`
             }
 
+            if (tools.includes('kysely-codegen')) {
+                env += `\nDATABASE_URL=mysql://superclovek:tajnyheslo123456@10.10.10.223:3306`
+            }
+
             if (tools.includes('cookies')) {
                 env += `\n#secret pro JWT (tím se bude podepisovat JWT token - https://jwt.io/)
 JWT_SECRET=text
@@ -354,7 +358,7 @@ export const jwt = new JWTCookies(JWT_SECRET)\n`
             fs.appendFileSync(
                 Path.join(serverPath, 'variables.ts'),
                 `import { DATABASE_DATABASE, DATABASE_IP, DATABASE_PASSWORD, DATABASE_PORT, DATABASE_USER, JWT_SECRET } from '$env/static/private'
-import type { Database } from '$types/types'
+import type { Database } from '$types/${tools.includes('kysely-codegen') ? 'database' : 'types'}'
 import { Kysely, MysqlDialect } from 'kysely'
 import { createPool } from 'mysql2'
 
@@ -379,9 +383,10 @@ export const conn = new Kysely<Database>({
                 fs.mkdirSync(typesPath)
             }
 
-            fs.writeFileSync(
-                Path.join(typesPath, 'types.ts'),
-                `import type { Generated, Insertable, Selectable, Updateable } from 'kysely'
+            if (!tools.includes('kysely-codegen')) {
+                fs.writeFileSync(
+                    Path.join(typesPath, 'types.ts'),
+                    `import type { Generated, Insertable, Selectable, Updateable } from 'kysely'
 export interface Database {
     example: exampleTable
 }
@@ -394,7 +399,8 @@ export interface exampleTable {
 export type Example = Selectable<exampleTable>
 export type NewExample = Insertable<exampleTable>
 export type ExampleUpdate = Updateable<exampleTable>`
-            )
+                )
+            }
         }
 
         if (tools.includes('kysely-codegen')) {
@@ -435,6 +441,10 @@ export type ExampleUpdate = Updateable<exampleTable>`
             }
 
             packageJson.scripts.format = 'prettier --plugin prettier-plugin-svelte --write .'
+        }
+
+        if (tools.includes('kysely-codegen')) {
+            packageJson.scripts.genDatabaseSchema = 'kysely-codegen --out-file ./src/types/database.ts'
         }
 
         const { adapter } = await enquirer.prompt<{
