@@ -358,7 +358,7 @@ export const jwt = new JWTCookies(JWT_SECRET)\n`
             fs.appendFileSync(
                 Path.join(serverPath, 'variables.ts'),
                 `import { DATABASE_DATABASE, DATABASE_IP, DATABASE_PASSWORD, DATABASE_PORT, DATABASE_USER, JWT_SECRET } from '$env/static/private'
-import type { ${tools.includes('kysely-codegen') ? 'DB' : 'Database'} from '$types/${
+import type { ${tools.includes('kysely-codegen') ? 'DB' : 'Database'} } from '$types/${
                     tools.includes('kysely-codegen') ? 'database' : 'types'
                 }'
 import { Kysely, MysqlDialect } from 'kysely'
