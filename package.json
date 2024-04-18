@@ -1,11 +1,11 @@
 {
     "name": "@patrick115/create-app",
-    "version": "1.0.8b",
+    "version": "1.1.0",
     "description": "Create a SvelteKit/TypeScript/Discord Bot app",
     "bin": "bin.js",
     "scripts": {
         "dev": "ts-node-dev --respawn ./src/index.ts",
-        "build": "mkdir -p build && tsc -p tsconfig.json ",
+        "build": "mkdir -p lib && tsc -p tsconfig.json --outDir lib && cp -r src/projects/templates lib/projects",
         "start": "node ./build/index.js",
         "clear": "rm -r build",
         "publ": "mkdir -p lib && tsc -p tsconfig.json --outDir lib && npm publish --access public",
@@ -15,16 +15,17 @@
     "author": "Patrik Mintěl",
     "license": "ISC",
     "dependencies": {
-        "cli-color": "^2.0.3",
+        "cli-color": "^2.0.4",
+        "create-svelte": "^6.1.1",
         "enquirer": "^2.4.1",
         "node-fetch": "^3.3.2"
     },
     "devDependencies": {
         "@types/cli-color": "^2.0.6",
         "@types/inquirer": "^9.0.7",
-        "@types/node": "^20.10.4",
+        "@types/node": "^20.12.7",
         "ts-node-dev": "^2.0.0",
-        "typescript": "^5.3.3"
+        "typescript": "^5.4.4"
     },
     "repository": {
         "type": "git",

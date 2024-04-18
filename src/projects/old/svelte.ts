@@ -1,19 +1,21 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const cli_color_1 = __importDefault(require("cli-color"));
-const enquirer_1 = __importDefault(require("enquirer"));
-const node_fs_1 = __importDefault(require("node:fs"));
-const node_path_1 = __importDefault(require("node:path"));
-const __1 = require("..");
-exports.default = {
+import clc from 'cli-color';
+import enquirer from 'enquirer';
+import fs from 'node:fs';
+import Path from 'node:path';
+import { _, _c, _p, packageProgram } from '../..';
+
+export default {
     name: 'Svelte App',
     key: 'svelte',
-    function: async (path, name) => {
-        (0, __1._)('text', `You selected: ${cli_color_1.default.red('Svelte Application')}`);
-        const { type, checking, features, svelte_5_beta } = await enquirer_1.default.prompt([
+    function: async (path: string, name: string) => {
+        _('text', `You selected: ${clc.red('Svelte Application')}`);
+
+        const { type, checking, features, svelte_5_beta } = await enquirer.prompt<{
+            type: 'default' | 'skeleton' | 'skeletonlib';
+            checking: 'checkjs' | 'typescript' | 'nulll';
+            features: ('eslint' | 'prettier' | 'playwright' | 'vitest')[];
+            svelte_5_beta: boolean;
+        }>([
             {
                 name: 'type',
                 type: 'select',
@@ -84,7 +86,8 @@ exports.default = {
                 message: 'Use svelte beta?',
             },
         ]);
-        let createCommand = `${__1.packageProgram} create svelte-with-args --name=${name} --directory=./ `;
+
+        let createCommand = `${packageProgram} create svelte-with-args --name=${name} --directory=./ `;
         createCommand += `--template=${type} `;
         createCommand += `--types=${checking} `;
         createCommand += `--prettier=${features.includes('prettier')} `;
@@ -92,17 +95,26 @@ exports.default = {
         createCommand += `--playwright=${features.includes('playwright')} `;
         createCommand += `--vitest=${features.includes('vitest')} `;
         createCommand += `--svelte5=${svelte_5_beta}`;
-        (0, __1._)('text', cli_color_1.default.green('Creating Svelte Project...'));
-        await (0, __1._c)(createCommand, path);
-        if (node_fs_1.default.existsSync(node_path_1.default.join(path, 'src', 'lib', 'index.ts'))) {
-            node_fs_1.default.unlinkSync(node_path_1.default.join(path, 'src', 'lib', 'index.ts'));
+
+        _('text', clc.green('Creating Svelte Project...'));
+        await _c(createCommand, path);
+
+        //delete example file
+        if (fs.existsSync(Path.join(path, 'src', 'lib', 'index.ts'))) {
+            fs.unlinkSync(Path.join(path, 'src', 'lib', 'index.ts'));
         }
+
+        //append to gitignore
         const gitignore = `#lock files
 pnpm-lock.yaml
 package-lock.json
 yarn.lock`;
-        node_fs_1.default.appendFileSync(node_path_1.default.join(path, '.gitignore'), gitignore);
-        const { tools } = await enquirer_1.default.prompt({
+
+        fs.appendFileSync(Path.join(path, '.gitignore'), gitignore);
+
+        const { tools } = await enquirer.prompt<{
+            tools: ('tailwindcss' | 'default' | 'authme' | 'cookies' | 'kysely' | 'kysely-codegen')[];
+        }>({
             name: 'tools',
             type: 'multiselect',
             message: 'Select additional things to install',
@@ -138,9 +150,13 @@ yarn.lock`;
                 },
             ],
         });
+
         if (features.includes('prettier')) {
-            (0, __1._)('text', 'Creating prettier config...');
-            node_fs_1.default.writeFileSync(node_path_1.default.join(path, '.prettierrc'), `{
+            _('text', 'Creating prettier config...');
+
+            fs.writeFileSync(
+                Path.join(path, '.prettierrc'),
+                `{
     "useTabs": false,
     "tabWidth": 4,
     "singleQuote": true,
@@ -149,52 +165,82 @@ yarn.lock`;
     "semi": false,
     "plugins": ["prettier-plugin-svelte"${tools.includes('tailwindcss') ? ', "prettier-plugin-tailwindcss"' : ''}],
     "overrides": [{ "files": "*.svelte", "options": { "parser": "svelte" } }]
-}`);
+}`,
+            );
         }
-        let packages = [];
-        let devPackages = [];
-        if (!node_fs_1.default.existsSync(node_path_1.default.join(path, 'src', 'lib', 'server'))) {
-            node_fs_1.default.mkdirSync(node_path_1.default.join(path, 'src', 'lib', 'server'));
+
+        let packages: Array<string> = [];
+        let devPackages: Array<string> = [];
+
+        if (!fs.existsSync(Path.join(path, 'src', 'lib', 'server'))) {
+            fs.mkdirSync(Path.join(path, 'src', 'lib', 'server'));
         }
+
         if (tools.includes('tailwindcss')) {
-            (0, __1._)('text', 'Adding tailwindcss...');
+            _('text', 'Adding tailwindcss...');
             devPackages = devPackages.concat(['tailwindcss', 'postcss', 'autoprefixer', 'prettier-plugin-tailwindcss']);
-            node_fs_1.default.writeFileSync(node_path_1.default.join(path, 'tailwind.config.js'), `/** @type {import('tailwindcss').Config} */
+
+            //tailwind config
+            fs.writeFileSync(
+                Path.join(path, 'tailwind.config.js'),
+                `/** @type {import('tailwindcss').Config} */
 export default {
   content: ['./src/**/*.{html,js,svelte,ts}'],
   theme: {
     extend: {}
   },
   plugins: []
-};`);
-            node_fs_1.default.writeFileSync(node_path_1.default.join(path, 'postcss.config.js'), `export default {
+};`,
+            );
+            //postcss config
+            fs.writeFileSync(
+                Path.join(path, 'postcss.config.js'),
+                `export default {
     plugins: {
         tailwindcss: {},
         autoprefixer: {},
     },
 }
-`);
-            node_fs_1.default.writeFileSync(node_path_1.default.join(path, 'src', 'app.css'), `@tailwind base;
+`,
+            );
+
+            //css file
+            fs.writeFileSync(
+                Path.join(path, 'src', 'app.css'),
+                `@tailwind base;
 @tailwind components;
-@tailwind utilities;`);
-            node_fs_1.default.writeFileSync(node_path_1.default.join(path, 'src', 'routes', '+layout.svelte'), `<script>
+@tailwind utilities;`,
+            );
+
+            //layout
+            fs.writeFileSync(
+                Path.join(path, 'src', 'routes', '+layout.svelte'),
+                `<script>
     import "../app.css";
 </script>
 
-<slot />`);
-            node_fs_1.default.writeFileSync(node_path_1.default.join(path, 'src', 'routes', '+page.svelte'), `<h1>Welcome to SvelteKit</h1>
+<slot />`,
+            );
+
+            //main wile with example TailwindCSS Class
+            fs.writeFileSync(
+                Path.join(path, 'src', 'routes', '+page.svelte'),
+                `<h1>Welcome to SvelteKit</h1>
 <p>
     Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation
     <span class="text-red-500">text-red-500</span>
-</p>`);
+</p>`,
+            );
         }
-        (0, __1._)('text', 'Adding default packages...');
+
+        _('text', 'Adding default packages...');
         if (tools.includes('default')) {
             packages = packages.concat(['zod', 'dotenv']);
             let env = `#webserver config
 HOST=0.0.0.0
 PORT=5178
 ORIGIN=http://localhost:5178`;
+
             if (tools.includes('kysely')) {
                 env += `\n#database config
 DATABASE_IP=10.10.10.223
@@ -202,9 +248,11 @@ DATABASE_PORT=3306
 DATABASE_USER=superclovek
 DATABASE_PASSWORD=tajnyheslo123456`;
             }
+
             if (tools.includes('kysely-codegen')) {
                 env += `\nDATABASE_URL=mysql://superclovek:tajnyheslo123456@10.10.10.223:3306`;
             }
+
             if (tools.includes('cookies')) {
                 env += `\n#secret pro JWT (tím se bude podepisovat JWT token - https://jwt.io/)
 JWT_SECRET=text
@@ -214,11 +262,21 @@ COOKIE_EXPIRE=1200
 #v sekundách (5 minut = 5 * 60)
 PUBLIC_CHECK_COOKIE_INTERVAL=300`;
             }
-            node_fs_1.default.writeFileSync(node_path_1.default.join(path, '.env.example'), env);
-            node_fs_1.default.writeFileSync(node_path_1.default.join(path, 'src', 'lib', 'functions.ts'), `export const sleep = (ms: number) => {
+
+            fs.writeFileSync(Path.join(path, '.env.example'), env);
+
+            //global functions
+            fs.writeFileSync(
+                Path.join(path, 'src', 'lib', 'functions.ts'),
+                `export const sleep = (ms: number) => {
     return new Promise((resolve) => setTimeout(resolve, ms))
-}`);
-            node_fs_1.default.writeFileSync(node_path_1.default.join(path, 'src', 'lib', 'server', 'functions.ts'), `import { json } from '@sveltejs/kit'
+}`,
+            );
+
+            //server functions
+            fs.writeFileSync(
+                Path.join(path, 'src', 'lib', 'server', 'functions.ts'),
+                `import { json } from '@sveltejs/kit'
 import type { z } from 'zod'
 
 export const checkData = async <T>(request: Request, obj: z.ZodType<T>): Promise<Response | z.infer<typeof obj>> => {
@@ -247,42 +305,62 @@ export const checkData = async <T>(request: Request, obj: z.ZodType<T>): Promise
 
 export const isOk = (data: Response | unknown): data is Response => {
     return data instanceof Response
-}`);
+}`,
+            );
         }
+
         if (tools.includes('authme')) {
-            (0, __1._)('text', 'Adding authme...');
+            _('text', 'Adding authme...');
             packages.push('bcrypt');
             devPackages.push('@types/bcrypt');
-            const request = await fetch('https://raw.githubusercontent.com/patrick11514/MyStuff/main/LIBS/src/authme/main.ts');
+
+            const request = await fetch(
+                'https://raw.githubusercontent.com/patrick11514/MyStuff/main/LIBS/src/authme/main.ts',
+            );
             const data = await request.text();
-            const serverPath = node_path_1.default.join(path, 'src', 'lib', 'server');
-            if (!node_fs_1.default.existsSync(node_path_1.default.join(serverPath, 'authme'))) {
-                node_fs_1.default.mkdirSync(node_path_1.default.join(serverPath, 'authme'));
+            const serverPath = Path.join(path, 'src', 'lib', 'server');
+            if (!fs.existsSync(Path.join(serverPath, 'authme'))) {
+                fs.mkdirSync(Path.join(serverPath, 'authme'));
             }
-            node_fs_1.default.writeFileSync(node_path_1.default.join(serverPath, 'authme', 'main.ts'), data);
+            fs.writeFileSync(Path.join(serverPath, 'authme', 'main.ts'), data);
         }
+
         if (tools.includes('cookies')) {
-            (0, __1._)('text', 'Adding cookies...');
+            _('text', 'Adding cookies...');
             packages = packages.concat(['async-lz-string', 'jsonwebtoken', 'simple-json-db', 'uuid']);
             devPackages = devPackages.concat(['@types/uuid', '@types/jsonwebtoken']);
-            const request = await fetch('https://raw.githubusercontent.com/patrick11514/MyStuff/main/LIBS/src/cookies/main.ts');
+
+            const request = await fetch(
+                'https://raw.githubusercontent.com/patrick11514/MyStuff/main/LIBS/src/cookies/main.ts',
+            );
             const data = await request.text();
-            const serverPath = node_path_1.default.join(path, 'src', 'lib', 'server');
-            if (!node_fs_1.default.existsSync(node_path_1.default.join(serverPath, 'cookies'))) {
-                node_fs_1.default.mkdirSync(node_path_1.default.join(serverPath, 'cookies'));
+            const serverPath = Path.join(path, 'src', 'lib', 'server');
+            if (!fs.existsSync(Path.join(serverPath, 'cookies'))) {
+                fs.mkdirSync(Path.join(serverPath, 'cookies'));
             }
-            node_fs_1.default.writeFileSync(node_path_1.default.join(serverPath, 'cookies', 'main.ts'), data);
-            node_fs_1.default.appendFileSync(node_path_1.default.join(serverPath, 'variables.ts'), `import { JWT_SECRET} from '$env/static/private'
+            fs.writeFileSync(Path.join(serverPath, 'cookies', 'main.ts'), data);
+
+            fs.appendFileSync(
+                Path.join(serverPath, 'variables.ts'),
+                `import { JWT_SECRET} from '$env/static/private'
 import { JWTCookies } from './cookies/main'
-export const jwt = new JWTCookies(JWT_SECRET)\n`);
+export const jwt = new JWTCookies(JWT_SECRET)\n`,
+            );
         }
+
         if (tools.includes('kysely')) {
-            (0, __1._)('text', 'Adding kysely...');
+            _('text', 'Adding kysely...');
             packages.push('kysely');
             packages.push('mysql2');
-            const serverPath = node_path_1.default.join(path, 'src', 'lib', 'server');
-            node_fs_1.default.appendFileSync(node_path_1.default.join(serverPath, 'variables.ts'), `import { DATABASE_DATABASE, DATABASE_IP, DATABASE_PASSWORD, DATABASE_PORT, DATABASE_USER, JWT_SECRET } from '$env/static/private'
-import type { ${tools.includes('kysely-codegen') ? 'DB' : 'Database'} } from '$types/${tools.includes('kysely-codegen') ? 'database' : 'types'}'
+
+            const serverPath = Path.join(path, 'src', 'lib', 'server');
+
+            fs.appendFileSync(
+                Path.join(serverPath, 'variables.ts'),
+                `import { DATABASE_DATABASE, DATABASE_IP, DATABASE_PASSWORD, DATABASE_PORT, DATABASE_USER, JWT_SECRET } from '$env/static/private'
+import type { ${tools.includes('kysely-codegen') ? 'DB' : 'Database'} } from '$types/${
+                    tools.includes('kysely-codegen') ? 'database' : 'types'
+                }'
 import { Kysely, MysqlDialect } from 'kysely'
 import { createPool } from 'mysql2'
 
@@ -299,13 +377,18 @@ const dialect = new MysqlDialect({
 
 export const conn = new Kysely<Database>({
     dialect
-})\n`);
-            const typesPath = node_path_1.default.join(path, 'src', 'types');
-            if (!node_fs_1.default.existsSync(typesPath)) {
-                node_fs_1.default.mkdirSync(typesPath);
+})\n`,
+            );
+
+            const typesPath = Path.join(path, 'src', 'types');
+            if (!fs.existsSync(typesPath)) {
+                fs.mkdirSync(typesPath);
             }
+
             if (!tools.includes('kysely-codegen')) {
-                node_fs_1.default.writeFileSync(node_path_1.default.join(typesPath, 'types.ts'), `import type { Generated, Insertable, Selectable, Updateable } from 'kysely'
+                fs.writeFileSync(
+                    Path.join(typesPath, 'types.ts'),
+                    `import type { Generated, Insertable, Selectable, Updateable } from 'kysely'
 export interface Database {
     example: exampleTable
 }
@@ -317,39 +400,58 @@ export interface exampleTable {
 
 export type Example = Selectable<exampleTable>
 export type NewExample = Insertable<exampleTable>
-export type ExampleUpdate = Updateable<exampleTable>`);
+export type ExampleUpdate = Updateable<exampleTable>`,
+                );
             }
         }
+
         if (tools.includes('kysely-codegen')) {
-            (0, __1._)('text', 'Adding kysely-codegen...');
+            _('text', 'Adding kysely-codegen...');
             devPackages.push('kysely-codegen');
+
             if (!packages.includes('mysql2')) {
                 devPackages.push('mysql2');
             }
         }
-        const data = node_fs_1.default.readFileSync(node_path_1.default.join(path, 'package.json'));
-        const packageJson = JSON.parse(data.toString());
-        (0, __1._)('text', 'Adding tailwindcss...');
+
+        //edit package.json
+        const data = fs.readFileSync(Path.join(path, 'package.json'));
+        const packageJson = JSON.parse(data.toString()) as {
+            name: string;
+            version: string;
+            private: boolean;
+            scripts: Record<string, string>;
+            devDependencies: Record<string, string>;
+            dependencies: Record<string, string>;
+            type: 'module' | 'commonjs';
+        };
+
+        _('text', 'Adding tailwindcss...');
         if (tools.includes('tailwindcss')) {
             packageJson.scripts.lint =
                 'prettier --plugin prettier-plugin-svelte --plugin prettier-plugin-tailwindcss --check .';
             if (features.includes('eslint')) {
                 packageJson.scripts.lint += ' && eslint .';
             }
+
             packageJson.scripts.format =
                 'prettier --plugin prettier-plugin-svelte --plugin prettier-plugin-tailwindcss --write .';
-        }
-        else {
+        } else {
             packageJson.scripts.lint = 'prettier --plugin prettier-plugin-svelte --check .';
             if (features.includes('eslint')) {
                 packageJson.scripts.lint += ' && eslint .';
             }
+
             packageJson.scripts.format = 'prettier --plugin prettier-plugin-svelte --write .';
         }
+
         if (tools.includes('kysely-codegen')) {
             packageJson.scripts.genDatabaseSchema = 'kysely-codegen --out-file ./src/types/database.ts';
         }
-        const { adapter } = await enquirer_1.default.prompt({
+
+        const { adapter } = await enquirer.prompt<{
+            adapter: 'cloudflare' | 'cloudflare-workers' | 'netlify' | 'node' | 'static' | 'vercel';
+        }>({
             name: 'adapter',
             type: 'select',
             message: 'Select Svelte Adapter to use',
@@ -386,17 +488,25 @@ export type ExampleUpdate = Updateable<exampleTable>`);
                 },
             ],
         });
+
         devPackages.push(`@sveltejs/adapter-${adapter}`);
+
         if (adapter == 'node') {
+            //for node adapter
             if (tools.includes('default')) {
                 packageJson.scripts.start = 'node -r dotenv/config build';
-            }
-            else {
+            } else {
                 packageJson.scripts.start = 'node build';
             }
         }
-        node_fs_1.default.writeFileSync(node_path_1.default.join(path, 'package.json'), JSON.stringify(packageJson, null, 4));
-        node_fs_1.default.writeFileSync(node_path_1.default.join(path, 'README.md'), `# Info
+
+        //write package.json
+        fs.writeFileSync(Path.join(path, 'package.json'), JSON.stringify(packageJson, null, 4));
+
+        //create readme
+        fs.writeFileSync(
+            Path.join(path, 'README.md'),
+            `# Info
 ...
 
 ## Dev mode
@@ -417,63 +527,86 @@ npm run build
 \`\`\`
 
 Show builded preview: \`npm run preview\`.
-${adapter == 'node'
-            ? 'Start builded app using `npm run start` with [Node Adapter](https://kit.svelte.dev/docs/adapter-node) or config command in package.json using your own [Adapter](https://kit.svelte.dev/docs/adapters)'
-            : ''} 
-${node_fs_1.default.existsSync(node_path_1.default.join(path, '.env.example'))
-            ? `
+${
+    adapter == 'node'
+        ? 'Start builded app using `npm run start` with [Node Adapter](https://kit.svelte.dev/docs/adapter-node) or config command in package.json using your own [Adapter](https://kit.svelte.dev/docs/adapters)'
+        : ''
+} 
+${
+    fs.existsSync(Path.join(path, '.env.example'))
+        ? `
 ## Example ENV file (.env.example)
 
 \`\`\`YAML
-${node_fs_1.default.readFileSync(node_path_1.default.join(path, '.env.example'))}
+${fs.readFileSync(Path.join(path, '.env.example'))}
 \`\`\`
 `
-            : ''}`);
-        (0, __1._)('text', 'Installing packages...');
+        : ''
+}`,
+        );
+
+        _('text', 'Installing packages...');
         const arr = packages
             .map((p) => {
-            return {
-                name: p,
-            };
-        })
-            .concat(devPackages.map((p) => {
-            return {
-                name: p,
-                dev: true,
-            };
-        }));
-        await (0, __1._c)(`${__1.packageProgram} remove @sveltejs/adapter-auto`, path);
-        const svelteJS = node_fs_1.default.readFileSync(node_path_1.default.join(path, 'svelte.config.js'));
-        node_fs_1.default.writeFileSync(node_path_1.default.join(path, 'svelte.config.js'), svelteJS
-            .toString()
-            .replace(/@sveltejs\/adapter-auto/g, `@sveltejs/adapter-${adapter}`)
-            .replace('adapter: adapter()', `adapter: adapter(),
+                return {
+                    name: p,
+                };
+            })
+            .concat(
+                devPackages.map((p) => {
+                    return {
+                        name: p,
+                        dev: true,
+                    };
+                }),
+            );
+
+        //remove default adapter
+        await _c(`${packageProgram} remove @sveltejs/adapter-auto`, path);
+
+        //update adapter in svelte.config.js
+        const svelteJS = fs.readFileSync(Path.join(path, 'svelte.config.js'));
+        fs.writeFileSync(
+            Path.join(path, 'svelte.config.js'),
+            svelteJS
+                .toString()
+                .replace(/@sveltejs\/adapter-auto/g, `@sveltejs/adapter-${adapter}`)
+                .replace(
+                    'adapter: adapter()',
+                    `adapter: adapter(),
         alias: {
             '$types/*': 'src/types/*',
-        }`));
-        await (0, __1._c)((0, __1._p)(arr), path);
-        (0, __1._)('text', 'Updating packages...');
-        if (__1.packageProgram == 'yarn') {
-            await (0, __1._c)(`${__1.packageProgram} upgrade`, path);
+        }`,
+                ),
+        );
+
+        await _c(_p(arr), path);
+
+        _('text', 'Updating packages...');
+        if (packageProgram == 'yarn') {
+            await _c(`${packageProgram} upgrade`, path);
+        } else {
+            await _c(`${packageProgram} update -L`, path);
         }
-        else {
-            await (0, __1._c)(`${__1.packageProgram} update -L`, path);
-        }
+
         if (features.includes('prettier')) {
-            (0, __1._)('text', 'Formatting...');
-            await (0, __1._c)(`${__1.packageProgram} format`, path);
+            _('text', 'Formatting...');
+            await _c(`${packageProgram} format`, path);
         }
-        const { git } = await enquirer_1.default.prompt({
+
+        const { git } = await enquirer.prompt<{ git: boolean }>({
             name: 'git',
             type: 'confirm',
             message: 'Do you want to initialize git?',
         });
+
         if (git) {
-            await (0, __1._c)('git init', path);
-            await (0, __1._c)('git add .', path);
-            await (0, __1._c)("git commit -m 'Initial commit'", path);
+            await _c('git init', path);
+            await _c('git add .', path);
+            await _c("git commit -m 'Initial commit'", path);
         }
-        (0, __1._)('text', cli_color_1.default.green('Instalation complete'));
-        (0, __1._)('text', `Now you can use cd ${path} && ${__1.packageProgram} dev to start developing`);
+
+        _('text', clc.green('Instalation complete'));
+        _('text', `Now you can use cd ${path} && ${packageProgram} dev to start developing`);
     },
 };
