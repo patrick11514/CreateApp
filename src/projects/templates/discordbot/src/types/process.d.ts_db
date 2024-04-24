@@ -1,0 +1,12 @@
+import { Client } from 'discord.js';
+import { db } from './connection';
+
+declare global {
+    namespace NodeJS {
+        interface Process {
+            client: Client;
+            database: typeof db;
+        }
+    }
+}
+export {};

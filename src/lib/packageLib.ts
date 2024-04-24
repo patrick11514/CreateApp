@@ -9,6 +9,7 @@ export class PackageManager {
     private packageList: PackageList = [];
     private devPackageList: PackageList = [];
     public scripts: Record<string, string> = {};
+    public additional: Record<string, any> = {};
 
     private path;
 
@@ -56,11 +57,16 @@ export class PackageManager {
             scripts: Record<string, string>;
             dependencies?: Record<string, string>;
             devDependencies?: Record<string, string>;
+            [key: string]: any;
         };
 
         file.dependencies = Object.fromEntries(this.packageList.sort());
         file.devDependencies = Object.fromEntries(this.devPackageList.sort());
         file.scripts = this.scripts;
+
+        Object.entries(this.additional).forEach(([key, value]) => {
+            file[key] = value;
+        });
 
         fs.writeFileSync(this.path, JSON.stringify(file, null, 4));
     }
