@@ -8,7 +8,7 @@
         "build": "mkdir -p lib && tsc -p tsconfig.json --outDir lib && cp -r src/projects/templates lib/projects",
         "start": "node ./build/index.js",
         "clear": "rm -r build",
-        "publ": "mkdir -p lib && tsc -p tsconfig.json --outDir lib && npm publish --access public",
+        "publ": "npm publish --access public",
         "runTest": "pnpm build && rm -rf test && mkdir -p test && cd test && node ../build/index.js && cd .."
     },
     "keywords": [],
