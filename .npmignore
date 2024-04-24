@@ -1,6 +1,6 @@
 deploy.js
 tsconfig.json
 pnpm-lock.yaml
-.prettierrc
+/.prettierrc
 build
 src
