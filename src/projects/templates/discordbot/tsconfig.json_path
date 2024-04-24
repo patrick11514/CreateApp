@@ -4,13 +4,16 @@
         "outDir": "build",
         "removeComments": true,
         "target": "ES2022",
-        "module": "NodeNext",
-        "moduleResolution": "NodeNext",
+        "module": "CommonJS",
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true
+        "forceConsistentCasingInFileNames": true,
+        "resolveJsonModule": true,
+        "paths": {
+            "$types/*": ["./src/types/*"]
+        }
     },
     "include": ["src/**/*"],
-    "exclude": ["node_modules", "src/projects/**/templates/*", "src/projects/old/*"]
+    "exclude": ["node_modules"]
 }

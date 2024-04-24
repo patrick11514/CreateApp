@@ -1,19 +1,29 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const cli_color_1 = __importDefault(require("cli-color"));
-const enquirer_1 = __importDefault(require("enquirer"));
-const node_fs_1 = __importDefault(require("node:fs"));
-const node_path_1 = __importDefault(require("node:path"));
-const __1 = require("..");
-exports.default = {
+import clc from 'cli-color';
+import enquirer from 'enquirer';
+import fs from 'node:fs';
+import Path from 'node:path';
+import { _, _c, _p, packageProgram } from '../..';
+
+export default {
     name: 'Discord Bot (discord.js)',
     key: 'discordbot',
-    function: async (path, name) => {
-        (0, __1._)('text', `You selected: ${cli_color_1.default.red('Discord Bot in discord.js')}`);
-        const { extensions, dependencies, features } = await enquirer_1.default.prompt([
+    function: async (path: string, name: string) => {
+        _('text', `You selected: ${clc.red('Discord Bot in discord.js')}`);
+
+        const { extensions, dependencies, features } = await enquirer.prompt<{
+            extensions: boolean;
+            dependencies: (
+                | 'simple-json-db'
+                | 'mariadb'
+                | 'node-fetch'
+                | 'express'
+                | 'prettier'
+                | 'dotenv'
+                | 'zod'
+                | 'paths'
+            )[];
+            features: 'example'[];
+        }>([
             {
                 name: 'extensions',
                 type: 'confirm',
@@ -70,107 +80,160 @@ exports.default = {
                 ],
             },
         ]);
+
         let olderNodeFetch = false;
+
         if (dependencies.includes('node-fetch')) {
-            const { olderNodeFetch: node } = await enquirer_1.default.prompt({
+            const { olderNodeFetch: node } = await enquirer.prompt<{ olderNodeFetch: boolean }>({
                 name: 'olderNodeFetch',
                 type: 'confirm',
                 message: 'Do you want to use CommonJS version of node-fetch?',
             });
+
             olderNodeFetch = node;
         }
-        let packages = ['discord.js'];
-        let devPackages = ['ts-node-dev', 'typescript', '@types/node'];
-        (0, __1._)('text', 'Adding default packages...');
+
+        let packages: Array<string> = ['discord.js'];
+        let devPackages: Array<string> = ['ts-node-dev', 'typescript', '@types/node'];
+
+        _('text', 'Adding default packages...');
         if (extensions) {
             packages = packages.concat(['cli-color', 'strip-color']);
             devPackages = devPackages.concat(['@types/cli-color', '@types/strip-color']);
-            const libPath = node_path_1.default.join(path, 'src', 'lib');
-            if (!node_fs_1.default.existsSync(libPath)) {
-                node_fs_1.default.mkdirSync(libPath, {
+
+            const libPath = Path.join(path, 'src', 'lib');
+
+            if (!fs.existsSync(libPath)) {
+                fs.mkdirSync(libPath, {
                     recursive: true,
                 });
             }
-            if (!node_fs_1.default.existsSync(node_path_1.default.join(path, 'logs'))) {
-                node_fs_1.default.mkdirSync(node_path_1.default.join(path, 'logs'));
+
+            if (!fs.existsSync(Path.join(path, 'logs'))) {
+                fs.mkdirSync(Path.join(path, 'logs'));
             }
+
             const request = await fetch('https://upload.patrick115.eu/.storage/logger.ts');
             const data = await request.text();
-            node_fs_1.default.writeFileSync(node_path_1.default.join(libPath, 'logger.ts'), data);
+
+            fs.writeFileSync(Path.join(libPath, 'logger.ts'), data);
         }
-        (0, __1._)('text', 'Adding dependencies...');
+
+        _('text', 'Adding dependencies...');
         if (dependencies.includes('simple-json-db')) {
             packages.push('simple-json-db');
         }
+
         if (dependencies.includes('mariadb')) {
             packages.push('mariadb');
         }
+
         if (dependencies.includes('node-fetch')) {
             if (olderNodeFetch) {
                 packages.push('node-fetch');
-            }
-            else {
+            } else {
                 packages.push('node-fetch@2');
             }
             devPackages.push('@types/node-fetch');
         }
+
         if (dependencies.includes('express')) {
             packages.push('express');
         }
+
         if (dependencies.includes('dotenv')) {
             packages.push('dotenv');
         }
+
         if (dependencies.includes('prettier')) {
             devPackages.push('prettier');
-            node_fs_1.default.writeFileSync(node_path_1.default.join(path, '.prettierrc'), `{
+
+            //prettier config
+            fs.writeFileSync(
+                Path.join(path, '.prettierrc'),
+                `{
     "printWidth": 120,
     "semi": false,
     "singleQuote": true,
     "useTabs": false,
     "tabWidth": 4
-}`);
+}`,
+            );
         }
+
         if (dependencies.includes('zod')) {
             packages.push('zod');
         }
+
         if (dependencies.includes('paths')) {
             devPackages.push('tsconfig-paths');
             packages.push('module-alias');
         }
-        await (0, __1._c)(`${__1.packageProgram} init ${__1.packageProgram != 'pnpm' ? '-y' : ''}`, path);
-        const data = node_fs_1.default.readFileSync(node_path_1.default.join(path, 'package.json'));
-        const packageJson = JSON.parse(data.toString());
+
+        //create package.json
+        await _c(`${packageProgram} init ${packageProgram != 'pnpm' ? '-y' : ''}`, path);
+
+        //edit package.json
+        const data = fs.readFileSync(Path.join(path, 'package.json'));
+        const packageJson = JSON.parse(data.toString()) as {
+            name: string;
+            version: string;
+            private: boolean;
+            scripts: Record<string, string>;
+            devDependencies: Record<string, string>;
+            dependencies: Record<string, string>;
+            type: 'module' | 'commonjs';
+            _moduleAliases: Record<string, string>;
+        };
+
         const mkdirFolders = [];
+
         if (dependencies.includes('simple-json-db')) {
             mkdirFolders.push('./databases');
         }
+
         if (extensions) {
             mkdirFolders.push('./logs');
         }
+
         packageJson.name = name;
         packageJson.scripts.dev = '';
         if (mkdirFolders.length > 0) {
             packageJson.scripts.folders = 'mkdir -p ' + mkdirFolders.join(' ');
             packageJson.scripts.dev += 'npm run folders && ';
         }
-        packageJson.scripts.dev += `ts-node-dev${dependencies.includes('paths') ? ' -r tsconfig-paths/register ' : ' '}--respawn --rs ./src/index.ts`;
+        packageJson.scripts.dev += `ts-node-dev${
+            dependencies.includes('paths') ? ' -r tsconfig-paths/register ' : ' '
+        }--respawn --rs ./src/index.ts`;
         packageJson.scripts.build = `mkdir -p build${mkdirFolders.length > 0 ? ' && npm run folders ' : ' '}&& tsc`;
-        packageJson.scripts.start = `node${dependencies.includes('paths') ? ' -r module-alias/register ' : ' '}./build/index.js`;
+        packageJson.scripts.start = `node${
+            dependencies.includes('paths') ? ' -r module-alias/register ' : ' '
+        }./build/index.js`;
         packageJson.scripts.clear = 'rm -rf build';
         if (features.includes('example')) {
-            packageJson.scripts.registerCommandsDev = `ts-node-dev ${dependencies.includes('paths') ? '-r tsconfig-paths/register ' : ''}./src/registerCommands.ts`;
-            packageJson.scripts.registerCommands = `node ${dependencies.includes('paths') ? '-r module-alias/register ' : ''}./build/registerCommands.js`;
+            packageJson.scripts.registerCommandsDev = `ts-node-dev ${
+                dependencies.includes('paths') ? '-r tsconfig-paths/register ' : ''
+            }./src/registerCommands.ts`;
+            packageJson.scripts.registerCommands = `node ${
+                dependencies.includes('paths') ? '-r module-alias/register ' : ''
+            }./build/registerCommands.js`;
         }
+
         if (dependencies.includes('paths')) {
             packageJson._moduleAliases = {
                 $types: './build/types',
             };
         }
+
         if (dependencies.includes('prettier')) {
             packageJson.scripts.format = 'prettier --write .';
         }
-        node_fs_1.default.writeFileSync(node_path_1.default.join(path, 'package.json'), JSON.stringify(packageJson, null, 4));
-        node_fs_1.default.writeFileSync(node_path_1.default.join(path, '.gitignore'), `node_modules
+
+        fs.writeFileSync(Path.join(path, 'package.json'), JSON.stringify(packageJson, null, 4));
+
+        fs.writeFileSync(
+            Path.join(path, '.gitignore'),
+            `node_modules
 build
 .env
 .env.*
@@ -178,19 +241,29 @@ build
 #lock files
 pnpm-lock.yaml
 package-lock.json
-yarn.lock`);
-        const typesFolder = node_path_1.default.join(path, 'src', 'types');
-        if (!node_fs_1.default.existsSync(typesFolder)) {
-            node_fs_1.default.mkdirSync(typesFolder, {
+yarn.lock`,
+        );
+
+        const typesFolder = Path.join(path, 'src', 'types');
+
+        if (!fs.existsSync(typesFolder)) {
+            fs.mkdirSync(typesFolder, {
                 recursive: true,
             });
         }
+
         if (dependencies.includes('dotenv')) {
-            node_fs_1.default.writeFileSync(node_path_1.default.join(path, '.env.example'), `BOT_ID=
+            fs.writeFileSync(
+                Path.join(path, '.env.example'),
+                `BOT_ID=
 BOT_SECRET=
-GUILD_ID=`);
+GUILD_ID=`,
+            );
+
             if (dependencies.includes('zod')) {
-                node_fs_1.default.writeFileSync(node_path_1.default.join(typesFolder, 'env.ts'), `import { config } from 'dotenv'
+                fs.writeFileSync(
+                    Path.join(typesFolder, 'env.ts'),
+                    `import { config } from 'dotenv'
 import { z } from 'zod'
 config()
 
@@ -200,19 +273,25 @@ const schema = z.object({
     GUILD_ID: z.string().min(18),
 })
 
-export const env = schema.parse(process.env)`);
-            }
-            else {
-                node_fs_1.default.writeFileSync(node_path_1.default.join(typesFolder, 'env.d.ts'), `declare global {
+export const env = schema.parse(process.env)`,
+                );
+            } else {
+                fs.writeFileSync(
+                    Path.join(typesFolder, 'env.d.ts'),
+                    `declare global {
     namespace NodeJS {
         interface ProcessEnv {
         }
     }
 }
-export {}`);
+export {}`,
+                );
             }
         }
-        node_fs_1.default.writeFileSync(node_path_1.default.join(path, 'tsconfig.json'), `{
+
+        fs.writeFileSync(
+            Path.join(path, 'tsconfig.json'),
+            `{
     "compilerOptions": {
         "rootDir": "src",
         "outDir": "build",
@@ -224,11 +303,13 @@ export {}`);
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true,
-        ${dependencies.includes('paths')
-            ? `"paths": {
+        ${
+            dependencies.includes('paths')
+                ? `"paths": {
             "$types/*": ["./src/types/*"]
         }`
-            : ''}
+                : ''
+        }
     },
     "include": [
         "src/**/*"
@@ -236,8 +317,12 @@ export {}`);
     "exclude": [
         "node_modules",
     ]
-}`);
-        node_fs_1.default.writeFileSync(node_path_1.default.join(typesFolder, 'process.d.ts'), `import { Client } from 'discord.js'
+}`,
+        );
+
+        fs.writeFileSync(
+            Path.join(typesFolder, 'process.d.ts'),
+            `import { Client } from 'discord.js'
 
 declare global {
     namespace NodeJS {
@@ -247,17 +332,23 @@ declare global {
     }
 }
 export {}
-`);
-        node_fs_1.default.writeFileSync(node_path_1.default.join(path, 'src', 'index.ts'), `import { Client, GatewayIntentBits, Partials } from 'discord.js'
+`,
+        );
+
+        fs.writeFileSync(
+            Path.join(path, 'src', 'index.ts'),
+            `import { Client, GatewayIntentBits, Partials } from 'discord.js'
 ${dependencies.includes('dotenv') ? `import { env } from './types/env'` : ''}
 ${extensions ? "import Logger from './lib/logger'" : ''}
-${features.includes('example')
-            ? `import { Awaitable } from '$types/types'
+${
+    features.includes('example')
+        ? `import { Awaitable } from '$types/types'
 import fs from 'node:fs'
 import path from 'path'
 import { DiscordEvent } from './hooks'
 import clc from 'cli-color'`
-            : ''}
+        : ''
+}
 
 //Intends
 const intents: GatewayIntentBits[] = [
@@ -271,11 +362,13 @@ const intents: GatewayIntentBits[] = [
 //Partials
 const partials: Partials[] = [Partials.Message, Partials.User, Partials.Reaction]
 
-${extensions
-            ? `//logger for main messages
+${
+    extensions
+        ? `//logger for main messages
 const l = new Logger('DiscordBot', 'cyan')
 l.start('Starting discord bot...')`
-            : ''}
+        : ''
+}
 
 //discord client
 const client = new Client({
@@ -285,19 +378,24 @@ const client = new Client({
 process.client = client
 
 //event handlers
-${features.includes('example')
-            ? `const starts: (() => Awaitable<void>)[] = []
+${
+    features.includes('example')
+        ? `const starts: (() => Awaitable<void>)[] = []
 const events: DiscordEvent<any>[] = []
 `
-            : ''}
+        : ''
+}
 client.on("ready", () => {
-    ${extensions
+    ${
+        extensions
             ? `l.stop(\`Logged in as \${client.user?.username}#\${client.user?.discriminator} (\${client.user?.id})\`)`
-            : `console.log(\`Logged in as \${client.user?.username}#\${client.user?.discriminator} (\${client.user?.id})\`\`)`}
+            : `console.log(\`Logged in as \${client.user?.username}#\${client.user?.discriminator} (\${client.user?.id})\`\`)`
+    }
 })
 
-${features.includes('example')
-            ? `
+${
+    features.includes('example')
+        ? `
 //load events frol files
 const files = fs
     .readdirSync(path.join(__dirname, 'functions'))
@@ -335,32 +433,41 @@ events.forEach((ev) => {
 })
 
 ${extensions ? `l.log(\`Registered \${clc.blue(evs)} events\`)` : ''}`
-            : ''}
+        : ''
+}
 
 //login
-client.login(${dependencies.includes('dotenv') ? 'env.BOT_SECRET' : "'SECRET_TOKEN'"})`);
+client.login(${dependencies.includes('dotenv') ? 'env.BOT_SECRET' : "'SECRET_TOKEN'"})`,
+        );
+
         const pkgs = packages
             .map((p) => {
-            if (p.includes('@')) {
-                const s = p.split('@');
+                if (p.includes('@')) {
+                    const s = p.split('@');
+                    return {
+                        name: s[0],
+                        version: s[1],
+                    };
+                }
                 return {
-                    name: s[0],
-                    version: s[1],
+                    name: p,
                 };
-            }
-            return {
-                name: p,
-            };
-        })
-            .concat(devPackages.map((p) => {
-            return {
-                name: p,
-                dev: true,
-            };
-        }));
+            })
+            .concat(
+                devPackages.map((p) => {
+                    return {
+                        name: p,
+                        dev: true,
+                    };
+                }),
+            );
+
         if (features.includes('example')) {
-            await (0, __1._c)('mkdir -p src/functions', path);
-            node_fs_1.default.writeFileSync(node_path_1.default.join(path, 'src', 'functions', 'ping.ts'), `import { DiscordEvent } from '../hooks'
+            await _c('mkdir -p src/functions', path);
+
+            fs.writeFileSync(
+                Path.join(path, 'src', 'functions', 'ping.ts'),
+                `import { DiscordEvent } from '../hooks'
 
 export default {
     events: [
@@ -370,8 +477,12 @@ export default {
             }
         }),
     ],
-}`);
-            node_fs_1.default.writeFileSync(node_path_1.default.join(path, 'src', 'hooks.ts'), `import { Awaitable } from '$types/types'
+}`,
+            );
+
+            fs.writeFileSync(
+                Path.join(path, 'src', 'hooks.ts'),
+                `import { Awaitable } from '$types/types'
                 import { ClientEvents } from 'discord.js'
                 
                 export class DiscordEvent<T extends keyof ClientEvents> {
@@ -390,9 +501,16 @@ export default {
                         }
                     }
                 }
-                `);
-            node_fs_1.default.writeFileSync(node_path_1.default.join(path, 'src', 'types', 'types.ts'), `export type Awaitable<T> = T | Promise<T>`);
-            node_fs_1.default.writeFileSync(node_path_1.default.join(path, 'src', 'registerCommands.ts'), `${extensions ? `import Logger from '$lib/logger'\n` : ''}${dependencies.includes('dotenv') ? `import { env } from '$types/env'\n` : ''}import { REST, Routes, SlashCommandBuilder } from 'discord.js'
+                `,
+            );
+
+            fs.writeFileSync(Path.join(path, 'src', 'types', 'types.ts'), `export type Awaitable<T> = T | Promise<T>`);
+
+            fs.writeFileSync(
+                Path.join(path, 'src', 'registerCommands.ts'),
+                `${extensions ? `import Logger from '$lib/logger'\n` : ''}${
+                    dependencies.includes('dotenv') ? `import { env } from '$types/env'\n` : ''
+                }import { REST, Routes, SlashCommandBuilder } from 'discord.js'
 
 const rest = new REST({ version: '10' }).setToken(${dependencies.includes('dotenv') ? 'env.BOT_SECRET' : "'BOT_TOKEN'"})
 
@@ -413,39 +531,48 @@ const rawCommands = [
 
 const json = rawCommands.map((command) => command.toJSON())
 
-${extensions
-                ? `const l = new Logger('RegisterCommands', 'yellow')
+${
+    extensions
+        ? `const l = new Logger('RegisterCommands', 'yellow')
 l.start('Registering commands...')`
-                : ''}
+        : ''
+}
 
 rest.put(Routes.applicationCommands(env.BOT_ID), { body: json })
     .then(() => {
         ${extensions ? `l.stop('Successfully registered commands')` : "console.log('Successfully registered commands')"}
     })
     .catch((err) => {
-        ${extensions
+        ${
+            extensions
                 ? `l.error('Failed to register commands')
         l.stopError(err)`
-                : "console.error('Failed to register commands', err)"}
+                : "console.error('Failed to register commands', err)"
+        }
     })
-            `);
+            `,
+            );
         }
-        (0, __1._)('text', 'Installing packages...');
-        await (0, __1._c)((0, __1._p)(pkgs), path);
+
+        _('text', 'Installing packages...');
+        await _c(_p(pkgs), path);
         if (dependencies.includes('prettier')) {
-            await (0, __1._c)(`${__1.packageProgram} format`, path);
+            await _c(`${packageProgram} format`, path);
         }
-        const { git } = await enquirer_1.default.prompt({
+
+        const { git } = await enquirer.prompt<{ git: boolean }>({
             name: 'git',
             type: 'confirm',
             message: 'Do you want to initialize git?',
         });
+
         if (git) {
-            await (0, __1._c)('git init', path);
-            await (0, __1._c)('git add .', path);
-            await (0, __1._c)("git commit -m 'Initial commit'", path);
+            await _c('git init', path);
+            await _c('git add .', path);
+            await _c("git commit -m 'Initial commit'", path);
         }
-        (0, __1._)('text', cli_color_1.default.green('Instalation complete'));
-        (0, __1._)('text', `Now you can use cd ${path} && ${__1.packageProgram} dev to start developing`);
+
+        _('text', clc.green('Instalation complete'));
+        _('text', `Now you can use cd ${path} && ${packageProgram} dev to start developing`);
     },
 };

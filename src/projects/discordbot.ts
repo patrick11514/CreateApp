@@ -1,578 +1,255 @@
-import clc from 'cli-color'
-import enquirer from 'enquirer'
-import fs from 'node:fs'
-import Path from 'node:path'
-import { _, _c, _p, packageProgram } from '..'
+import clc from 'cli-color';
+import fs from 'node:fs';
+import Path from 'node:path';
+import { Logger } from '../lib/logger';
+import { Main } from '../lib/main';
+import { PackageList, PackageManager } from '../lib/packageLib';
+import { prompt } from '../lib/prompt';
+import { copyFiles } from '../lib/utilts';
+
+const PACKAGE_LIST = {
+    defaultDev: [
+        ['ts-node-dev', '^2.0.0'],
+        ['typescript', '^5.4.4'],
+        ['@types/node', '^20.12.7'],
+    ],
+    default: [['discord.js', '^14.14.1']],
+    kysely: [
+        ['kysely', '^0.27.2'],
+        ['mysql2', '^3.9.1'],
+        ['dotenv', '^16.4.5'],
+        ['zod', '^3.23.4'],
+        ['kysely-codegen', ''],
+    ],
+    logger: [
+        ['strip-color', '^0.1.0'],
+        ['cli-color', '^2.0.4'],
+    ],
+    loggerDev: [
+        ['@types/strip-color', '^0.1.2'],
+        ['@types/cli-color', '^2.0.6'],
+    ],
+} as const satisfies Record<string, PackageList>;
 
 export default {
-    name: 'Discord Bot (discord.js)',
-    key: 'discordbot',
-    function: async (path: string, name: string) => {
-        _('text', `You selected: ${clc.red('Discord Bot in discord.js')}`)
+    name: 'DiscordJS bot',
+    key: 'discordjs',
+    function: async (main: Main, path: string, name: string) => {
+        Logger.log(`You selected: ${clc.red('Discord Bot in discord.js')}`);
 
-        const { extensions, dependencies, features } = await enquirer.prompt<{
-            extensions: boolean
-            dependencies: (
-                | 'simple-json-db'
-                | 'mariadb'
-                | 'node-fetch'
-                | 'express'
-                | 'prettier'
-                | 'dotenv'
-                | 'zod'
-                | 'paths'
-            )[]
-            features: 'example'[]
-        }>([
+        const { features, dependencies } = await prompt([
             {
-                name: 'extensions',
-                type: 'confirm',
-                message: 'Do you want to install message logger, which uses CLI Colors?',
+                name: 'features',
+                message: 'Select features to install.',
+                type: 'multiselect',
+                choices: [
+                    {
+                        name: 'logger',
+                        message: 'Logger',
+                        hint: 'Logger for logging messages and saving logs to file',
+                    },
+                    {
+                        name: 'example',
+                        message: 'Example command',
+                        hint: 'Example command for discordbot',
+                    },
+                ],
             },
             {
                 name: 'dependencies',
                 type: 'multiselect',
-                message: 'Which demendencies do you want to install?',
+                message: 'Select dependencies to add',
                 choices: [
                     {
-                        message: 'Simple Json DB',
                         name: 'simple-json-db',
+                        message: 'Simple JSON Database',
                     },
                     {
-                        message: 'MySQL',
-                        name: 'mariadb',
+                        name: 'database',
+                        message: 'Database connector',
                     },
                     {
-                        message: 'Fetch',
-                        name: 'node-fetch',
+                        name: 'fetch',
+                        message: 'Node fetch',
                     },
                     {
-                        message: 'Express JS',
                         name: 'express',
+                        message: 'ExpressJS',
                     },
                     {
-                        message: 'Prettier',
                         name: 'prettier',
+                        message: 'Prettier',
                     },
                     {
-                        message: 'DotEnv',
-                        name: 'dotenv',
-                    },
-                    {
-                        message: 'Zod',
                         name: 'zod',
+                        message: 'Zod',
                     },
                     {
-                        message: 'Custom paths',
                         name: 'paths',
+                        message: 'Custom paths',
                     },
                 ],
             },
+        ] as const);
+
+        fs.mkdirSync(path, { recursive: true });
+
+        const templateFolder = Path.join(__dirname, 'templates', 'discordbot');
+
+        copyFiles(
+            templateFolder,
+            path,
+            [
+                {
+                    path: 'package.json',
+                    replace: ['%%NAME%%'],
+                },
+                'src/types/types.ts',
+                'src/hooks.ts',
+            ],
             {
-                name: 'features',
-                type: 'multiselect',
-                message: 'Which features do you want to install?',
-                choices: [
-                    {
-                        message: 'Example Command',
-                        name: 'example',
-                    },
-                ],
-            },
-        ])
-
-        let olderNodeFetch = false
-
-        if (dependencies.includes('node-fetch')) {
-            const { olderNodeFetch: node } = await enquirer.prompt<{ olderNodeFetch: boolean }>({
-                name: 'olderNodeFetch',
-                type: 'confirm',
-                message: 'Do you want to use CommonJS version of node-fetch?',
-            })
-
-            olderNodeFetch = node
-        }
-
-        let packages: Array<string> = ['discord.js']
-        let devPackages: Array<string> = ['ts-node-dev', 'typescript', '@types/node']
-
-        _('text', 'Adding default packages...')
-        if (extensions) {
-            packages = packages.concat(['cli-color', 'strip-color'])
-            devPackages = devPackages.concat(['@types/cli-color', '@types/strip-color'])
-
-            const libPath = Path.join(path, 'src', 'lib')
-
-            if (!fs.existsSync(libPath)) {
-                fs.mkdirSync(libPath, {
-                    recursive: true,
-                })
+                '%%NAME%%': name,
             }
+        );
 
-            if (!fs.existsSync(Path.join(path, 'logs'))) {
-                fs.mkdirSync(Path.join(path, 'logs'))
-            }
+        const pm = new PackageManager(path);
 
-            const request = await fetch('https://upload.patrick115.eu/.storage/logger.ts')
-            const data = await request.text()
+        pm.mergePackages(PACKAGE_LIST.defaultDev, true);
+        pm.mergePackages(PACKAGE_LIST.default);
 
-            fs.writeFileSync(Path.join(libPath, 'logger.ts'), data)
-        }
+        if (dependencies.includes('database')) {
+            const { type } = await prompt([
+                {
+                    name: 'type',
+                    type: 'select',
+                    message: 'Select database connector',
+                    choices: [
+                        {
+                            name: 'mariadb',
+                            message: 'Connector for MariaDB',
+                        },
+                        {
+                            name: 'kysely',
+                            message: 'Kysely',
+                            hint: 'The type-safe SQL query builder for TypeScript',
+                        },
+                    ],
+                },
+            ] as const);
 
-        _('text', 'Adding dependencies...')
-        if (dependencies.includes('simple-json-db')) {
-            packages.push('simple-json-db')
-        }
-
-        if (dependencies.includes('mariadb')) {
-            packages.push('mariadb')
-        }
-
-        if (dependencies.includes('node-fetch')) {
-            if (olderNodeFetch) {
-                packages.push('node-fetch')
+            if (type == 'mariadb') {
+                pm.addPackage('mariadb', '^3.3.0');
             } else {
-                packages.push('node-fetch@2')
+                pm.mergePackages(PACKAGE_LIST.kysely);
+                pm.addPackage('kysely-codegen', '^0.15.0', true);
+                pm.scripts.genDatabaseSchema = 'kysely-codegen --out-file ./src/types/database.ts';
+
+                copyFiles(templateFolder, path, [
+                    '.env.example_db',
+                    'src/types/env.ts_db',
+                    'src/types/connection.ts',
+                    'src/types/process.d.ts_db',
+                ]);
             }
-            devPackages.push('@types/node-fetch')
+        } else {
+            copyFiles(templateFolder, path, ['.env.example', 'src/types/env.ts', 'src/types/process.d.ts']);
         }
 
         if (dependencies.includes('express')) {
-            packages.push('express')
+            pm.addPackage('express', '4.19.2');
+            pm.addPackage('@types/express', '4.17.21', true);
         }
 
-        if (dependencies.includes('dotenv')) {
-            packages.push('dotenv')
+        if (dependencies.includes('fetch')) {
+            pm.addPackage('node-fetch', '^3.3.0');
+        }
+
+        if (dependencies.includes('paths')) {
+            pm.addPackage('module-alias', '^2.2.3');
+            pm.addPackage('tsconfig-paths', '^4.2.0', true);
+            pm.scripts.dev = 'ts-node-dev -r tsconfig-paths/register --respawn ./src/index.ts';
+            pm.scripts.start = 'node -r module-alias/register ./build/index.js';
+            pm.additional['_moduleAlias'] = {
+                $: './build',
+            };
+
+            pm.scripts.registerCommandsDev = 'ts-node-dev  -r tsconfig-paths/register ./src/registerCommands.ts';
+
+            copyFiles(templateFolder, path, ['tsconfig.json_path']);
+        } else {
+            copyFiles(templateFolder, path, ['tsconfig.json']);
         }
 
         if (dependencies.includes('prettier')) {
-            devPackages.push('prettier')
+            copyFiles(templateFolder, path, ['.prettierrc']);
+            pm.addPackage('prettier', '^3.1.0');
+            pm.scripts.format = 'prettier --write .';
+        }
 
-            //prettier config
-            fs.writeFileSync(
-                Path.join(path, '.prettierrc'),
-                `{
-    "printWidth": 120,
-    "semi": false,
-    "singleQuote": true,
-    "useTabs": false,
-    "tabWidth": 4
-}`
-            )
+        if (dependencies.includes('simple-json-db')) {
+            pm.addPackage('simple-json-db', '^2.0.0');
         }
 
         if (dependencies.includes('zod')) {
-            packages.push('zod')
+            pm.addPackage('zod', '^3.23.4');
         }
 
-        if (dependencies.includes('paths')) {
-            devPackages.push('tsconfig-paths')
-            packages.push('module-alias')
+        if (features.includes('logger')) {
+            pm.mergePackages(PACKAGE_LIST.logger);
+            pm.mergePackages(PACKAGE_LIST.loggerDev);
+
+            copyFiles(templateFolder, path, [
+                'src/index.ts_logger',
+                'src/registerCommands.ts_logger',
+                'src/lib/logger.ts',
+            ]);
+
+            fs.mkdirSync(Path.join(path, 'logs'));
+        } else {
+            copyFiles(templateFolder, path, ['src/index.ts', 'src/registerCommands.ts']);
         }
-
-        //create package.json
-        await _c(`${packageProgram} init ${packageProgram != 'pnpm' ? '-y' : ''}`, path)
-
-        //edit package.json
-        const data = fs.readFileSync(Path.join(path, 'package.json'))
-        const packageJson = JSON.parse(data.toString()) as {
-            name: string
-            version: string
-            private: boolean
-            scripts: Record<string, string>
-            devDependencies: Record<string, string>
-            dependencies: Record<string, string>
-            type: 'module' | 'commonjs'
-            _moduleAliases: Record<string, string>
-        }
-
-        const mkdirFolders = []
-
-        if (dependencies.includes('simple-json-db')) {
-            mkdirFolders.push('./databases')
-        }
-
-        if (extensions) {
-            mkdirFolders.push('./logs')
-        }
-
-        packageJson.name = name
-        packageJson.scripts.dev = ''
-        if (mkdirFolders.length > 0) {
-            packageJson.scripts.folders = 'mkdir -p ' + mkdirFolders.join(' ')
-            packageJson.scripts.dev += 'npm run folders && '
-        }
-        packageJson.scripts.dev += `ts-node-dev${
-            dependencies.includes('paths') ? ' -r tsconfig-paths/register ' : ' '
-        }--respawn --rs ./src/index.ts`
-        packageJson.scripts.build = `mkdir -p build${mkdirFolders.length > 0 ? ' && npm run folders ' : ' '}&& tsc`
-        packageJson.scripts.start = `node${
-            dependencies.includes('paths') ? ' -r module-alias/register ' : ' '
-        }./build/index.js`
-        packageJson.scripts.clear = 'rm -rf build'
-        if (features.includes('example')) {
-            packageJson.scripts.registerCommandsDev = `ts-node-dev ${
-                dependencies.includes('paths') ? '-r tsconfig-paths/register ' : ''
-            }./src/registerCommands.ts`
-            packageJson.scripts.registerCommands = `node ${
-                dependencies.includes('paths') ? '-r module-alias/register ' : ''
-            }./build/registerCommands.js`
-        }
-
-        if (dependencies.includes('paths')) {
-            packageJson._moduleAliases = {
-                $types: './build/types',
-            }
-        }
-
-        if (dependencies.includes('prettier')) {
-            packageJson.scripts.format = 'prettier --write .'
-        }
-
-        fs.writeFileSync(Path.join(path, 'package.json'), JSON.stringify(packageJson, null, 4))
-
-        fs.writeFileSync(
-            Path.join(path, '.gitignore'),
-            `node_modules
-build
-.env
-.env.*
-!.env.example
-#lock files
-pnpm-lock.yaml
-package-lock.json
-yarn.lock`
-        )
-
-        const typesFolder = Path.join(path, 'src', 'types')
-
-        if (!fs.existsSync(typesFolder)) {
-            fs.mkdirSync(typesFolder, {
-                recursive: true,
-            })
-        }
-
-        if (dependencies.includes('dotenv')) {
-            fs.writeFileSync(
-                Path.join(path, '.env.example'),
-                `BOT_ID=
-BOT_SECRET=
-GUILD_ID=`
-            )
-
-            if (dependencies.includes('zod')) {
-                fs.writeFileSync(
-                    Path.join(typesFolder, 'env.ts'),
-                    `import { config } from 'dotenv'
-import { z } from 'zod'
-config()
-
-const schema = z.object({
-    BOT_ID: z.string().min(18),
-    BOT_SECRET: z.string().min(70),
-    GUILD_ID: z.string().min(18),
-})
-
-export const env = schema.parse(process.env)`
-                )
-            } else {
-                fs.writeFileSync(
-                    Path.join(typesFolder, 'env.d.ts'),
-                    `declare global {
-    namespace NodeJS {
-        interface ProcessEnv {
-        }
-    }
-}
-export {}`
-                )
-            }
-        }
-
-        fs.writeFileSync(
-            Path.join(path, 'tsconfig.json'),
-            `{
-    "compilerOptions": {
-        "rootDir": "src",
-        "outDir": "build",
-        "removeComments": true,
-        "target": "ES2022",
-        "module": "CommonJS",
-        "strict": true,
-        "esModuleInterop": true,
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true,
-        "resolveJsonModule": true,
-        ${
-            dependencies.includes('paths')
-                ? `"paths": {
-            "$types/*": ["./src/types/*"]
-        }`
-                : ''
-        }
-    },
-    "include": [
-        "src/**/*"
-    ],
-    "exclude": [
-        "node_modules",
-    ]
-}`
-        )
-
-        fs.writeFileSync(
-            Path.join(typesFolder, 'process.d.ts'),
-            `import { Client } from 'discord.js'
-
-declare global {
-    namespace NodeJS {
-        interface Process {
-            client: Client
-        }
-    }
-}
-export {}
-`
-        )
-
-        fs.writeFileSync(
-            Path.join(path, 'src', 'index.ts'),
-            `import { Client, GatewayIntentBits, Partials } from 'discord.js'
-${dependencies.includes('dotenv') ? `import { env } from './types/env'` : ''}
-${extensions ? "import Logger from './lib/logger'" : ''}
-${
-    features.includes('example')
-        ? `import { Awaitable } from '$types/types'
-import fs from 'node:fs'
-import path from 'path'
-import { DiscordEvent } from './hooks'
-import clc from 'cli-color'`
-        : ''
-}
-
-//Intends
-const intents: GatewayIntentBits[] = [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.MessageContent,
-]
-
-//Partials
-const partials: Partials[] = [Partials.Message, Partials.User, Partials.Reaction]
-
-${
-    extensions
-        ? `//logger for main messages
-const l = new Logger('DiscordBot', 'cyan')
-l.start('Starting discord bot...')`
-        : ''
-}
-
-//discord client
-const client = new Client({
-    intents,
-    partials,
-})
-process.client = client
-
-//event handlers
-${
-    features.includes('example')
-        ? `const starts: (() => Awaitable<void>)[] = []
-const events: DiscordEvent<any>[] = []
-`
-        : ''
-}
-client.on("ready", () => {
-    ${
-        extensions
-            ? `l.stop(\`Logged in as \${client.user?.username}#\${client.user?.discriminator} (\${client.user?.id})\`)`
-            : `console.log(\`Logged in as \${client.user?.username}#\${client.user?.discriminator} (\${client.user?.id})\`\`)`
-    }
-})
-
-${
-    features.includes('example')
-        ? `
-//load events frol files
-const files = fs
-    .readdirSync(path.join(__dirname, 'functions'))
-    .filter((file) => file.endsWith('.ts') || file.endsWith('.js'))
-
-files.forEach((file) => {
-    const required = require(path.join(__dirname, 'functions', file))
-
-    if (!('default' in required)) {
-        l.error(\`File \${file} is missing default export\`)
-        return
-    }
-
-    const exp: {
-        events: DiscordEvent<any>[]
-        start?: () => Awaitable<void>
-    } = required.default
-
-    const start = exp.start
-
-    if (start !== undefined) {
-        starts.push(start)
-    }
-
-    exp.events.forEach((ev) => {
-        events.push(ev)
-    })
-})
-
-let evs = 0
-events.forEach((ev) => {
-    const { event, callback } = ev.get()
-    client.on(event, callback)
-    evs++
-})
-
-${extensions ? `l.log(\`Registered \${clc.blue(evs)} events\`)` : ''}`
-        : ''
-}
-
-//login
-client.login(${dependencies.includes('dotenv') ? 'env.BOT_SECRET' : "'SECRET_TOKEN'"})`
-        )
-
-        const pkgs = packages
-            .map((p) => {
-                if (p.includes('@')) {
-                    const s = p.split('@')
-                    return {
-                        name: s[0],
-                        version: s[1],
-                    }
-                }
-                return {
-                    name: p,
-                }
-            })
-            .concat(
-                devPackages.map((p) => {
-                    return {
-                        name: p,
-                        dev: true,
-                    }
-                })
-            )
 
         if (features.includes('example')) {
-            await _c('mkdir -p src/functions', path)
-
-            fs.writeFileSync(
-                Path.join(path, 'src', 'functions', 'ping.ts'),
-                `import { DiscordEvent } from '../hooks'
-
-export default {
-    events: [
-        new DiscordEvent('messageCreate', (msg) => {
-            if (msg.content === 'ping' && !msg.author.bot) {
-                msg.reply('Pong!')
-            }
-        }),
-    ],
-}`
-            )
-
-            fs.writeFileSync(
-                Path.join(path, 'src', 'hooks.ts'),
-                `import { Awaitable } from '$types/types'
-                import { ClientEvents } from 'discord.js'
-                
-                export class DiscordEvent<T extends keyof ClientEvents> {
-                    event: T
-                    callback: (...args: ClientEvents[T]) => Awaitable<void>
-                
-                    constructor(event: T, callback: (...args: ClientEvents[T]) => Awaitable<void>) {
-                        this.event = event
-                        this.callback = callback
-                    }
-                
-                    get() {
-                        return {
-                            event: this.event,
-                            callback: this.callback,
-                        }
-                    }
-                }
-                `
-            )
-
-            fs.writeFileSync(Path.join(path, 'src', 'types', 'types.ts'), `export type Awaitable<T> = T | Promise<T>`)
-
-            fs.writeFileSync(
-                Path.join(path, 'src', 'registerCommands.ts'),
-                `${extensions ? `import Logger from '$lib/logger'\n` : ''}${
-                    dependencies.includes('dotenv') ? `import { env } from '$types/env'\n` : ''
-                }import { REST, Routes, SlashCommandBuilder } from 'discord.js'
-
-const rest = new REST({ version: '10' }).setToken(${dependencies.includes('dotenv') ? 'env.BOT_SECRET' : "'BOT_TOKEN'"})
-
-const rawCommands = [
-    new SlashCommandBuilder()
-        .setName('example')
-        .setDescription('Example text')
-        .setDescriptionLocalizations({ cs: 'Ukázkový text', 'en-US': 'Example text' })
-        .addNumberOption((option) => {
-            return option
-                .setName('id')
-                .setDescription('Example id')
-                .setDescriptionLocalizations({ cs: 'Ukázkové id', 'en-US': 'Example id' })
-                .setRequired(true)
-        }),
-    
-] as SlashCommandBuilder[]
-
-const json = rawCommands.map((command) => command.toJSON())
-
-${
-    extensions
-        ? `const l = new Logger('RegisterCommands', 'yellow')
-l.start('Registering commands...')`
-        : ''
-}
-
-rest.put(Routes.applicationCommands(env.BOT_ID), { body: json })
-    .then(() => {
-        ${extensions ? `l.stop('Successfully registered commands')` : "console.log('Successfully registered commands')"}
-    })
-    .catch((err) => {
-        ${
-            extensions
-                ? `l.error('Failed to register commands')
-        l.stopError(err)`
-                : "console.error('Failed to register commands', err)"
-        }
-    })
-            `
-            )
+            copyFiles(templateFolder, path, ['src/functions/example.ts']);
         }
 
-        _('text', 'Installing packages...')
-        await _c(_p(pkgs), path)
-        if (dependencies.includes('prettier')) {
-            await _c(`${packageProgram} format`, path)
-        }
+        pm.write();
 
-        const { git } = await enquirer.prompt<{ git: boolean }>({
-            name: 'git',
+        const { install } = await prompt({
+            name: 'install',
+            message: 'Do you want to install packages?',
             type: 'confirm',
-            message: 'Do you want to initialize git?',
-        })
+        });
+
+        if (install) {
+            Logger.log('Installing packages...');
+            await main.execute(`${main.packageProgram} install`, path);
+        }
+
+        if (install && dependencies.includes('prettier')) {
+            const { format } = await prompt({
+                name: 'format',
+                message: 'Do you want to format files?',
+                type: 'confirm',
+            });
+
+            if (format) {
+                Logger.log('Formatting files...');
+                await main.execute(`${main.packageProgram} run format`, path);
+            }
+        }
+
+        const { git } = await prompt({
+            name: 'git',
+            message: 'Do you want to init git?',
+            type: 'confirm',
+        });
 
         if (git) {
-            await _c('git init', path)
-            await _c('git add .', path)
-            await _c("git commit -m 'Initial commit'", path)
+            Logger.log('Initializing git...');
+            await main.execute('git init', path);
         }
 
-        _('text', clc.green('Instalation complete'))
-        _('text', `Now you can use cd ${path} && ${packageProgram} dev to start developing`)
+        Logger.log('Project installed');
     },
-}
+};

@@ -1,0 +1,13 @@
+{
+    "name": "%%NAME%%",
+    "version": "0.0.1",
+    "main": "build/index.js",
+    "scripts": {
+        "dev": "ts-node-dev --respawn ./src/index.ts",
+        "build": "mkdir -p build && tsc",
+        "start": "node ./build/index.js",
+        "registerCommandsDev": "ts-node-dev ./src/registerCommands.ts"
+    },
+    "dependencies": {},
+    "devDependencies": {}
+}
