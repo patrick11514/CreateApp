@@ -1,0 +1,32 @@
+<script lang="ts">
+    import { API } from '$/lib/api';
+    import { onMount } from 'svelte';
+    import type { PageServerData } from './$types';
+
+    export let data: PageServerData;
+
+    let message = '';
+
+    const handleData = (response: (typeof data)['hi']) => {
+        message = response;
+    };
+
+    handleData(data.hi);
+
+    onMount(async () => {
+        const res = await API.example();
+        console.log(res);
+
+        handleData(await API.sayHi({
+            name: 'Patrick',
+            age: 21,
+        }));
+    });
+</script>
+
+
+<h1>Welcome to SvelteKit</h1>
+<p>
+    Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation
+    {message}
+</p>

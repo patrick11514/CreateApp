@@ -32,6 +32,10 @@ const PACKAGE_LIST = {
         ['kysely', '^0.27.2'],
         ['mysql2', '^3.9.1'],
     ],
+    svelte_api: [
+        ['zod', '^3.22.4'],
+        ['@patrick115/sveltekitapi', '^1.2.2'],
+    ],
 } as const satisfies Record<string, PackageList>;
 
 const adapterVersions = {
@@ -173,6 +177,11 @@ export default {
                     name: 'kysely-codegen',
                     hint: "kysely-codegen generates Kysely type definitions from your database. That's it.",
                 },
+                {
+                    message: 'SvelteKitAPI',
+                    name: 'kit-api',
+                    hint: 'Typesafe API + Client for SvelteKit',
+                },
             ],
         } as const);
 
@@ -297,7 +306,27 @@ export default {
         }
 
         if (tools.includes('kysely-codegen')) {
+            pm.addPackage('kysely-codegen', '^0.11.0', true);
             pm.scripts.genDatabaseSchema = 'kysely-codegen --out-file ./src/types/database.ts';
+        }
+
+        if (tools.includes('kit-api')) {
+            pm.mergePackages(PACKAGE_LIST.svelte_api);
+
+            const suffix = tools.includes('tailwindcss') ? '_apitw' : '_api';
+
+            copyFiles(templateFolder, path, [
+                'src/routes/+layout.server.ts',
+                'src/routes/+layout.svelte' + suffix,
+                'src/routes/+page.svelte' + suffix,
+                'src/routes/+page.server.ts',
+                'src/routes/api/[...data]/+server.ts',
+                'src/lib/api.ts',
+                'src/lib/server/server.ts',
+                'src/lib/server/api.ts',
+                'src/lib/server/context.ts',
+                'src/lib/server/routes.ts',
+            ]);
         }
 
         copyFiles(

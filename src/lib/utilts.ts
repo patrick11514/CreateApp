@@ -22,7 +22,14 @@ export const copyFiles = (
         }
 
         const from = Path.join(templatePath, filePath);
-        const to = Path.join(path, filePath);
+
+        const fileData = Path.parse(filePath);
+        if (fileData.ext.includes('_')) {
+            fileData.ext = fileData.ext.split('_')[0];
+            fileData.base = fileData.name + fileData.ext;
+        }
+
+        const to = Path.join(path, Path.format(fileData));
 
         if (typeof file === 'object' && file.replace !== undefined && values !== undefined) {
             let content = fs.readFileSync(from, 'utf-8');
