@@ -12,8 +12,12 @@ const PACKAGE_LIST = {
         ['ts-node-dev', '^2.0.0'],
         ['typescript', '^5.4.4'],
         ['@types/node', '^20.12.7'],
+        ['@types/cli-color', '^2.0.6'],
     ],
-    default: [['discord.js', '^14.14.1']],
+    default: [
+        ['discord.js', '^14.14.1'],
+        ['cli-color', '^2.0.4'],
+    ],
     kysely: [
         ['kysely', '^0.27.2'],
         ['mysql2', '^3.9.1'],
@@ -21,14 +25,8 @@ const PACKAGE_LIST = {
         ['zod', '^3.23.4'],
         ['kysely-codegen', ''],
     ],
-    logger: [
-        ['strip-color', '^0.1.0'],
-        ['cli-color', '^2.0.4'],
-    ],
-    loggerDev: [
-        ['@types/strip-color', '^0.1.2'],
-        ['@types/cli-color', '^2.0.6'],
-    ],
+    logger: [['strip-color', '^0.1.0']],
+    loggerDev: [['@types/strip-color', '^0.1.2']],
 } as const satisfies Record<string, PackageList>;
 
 export default {
