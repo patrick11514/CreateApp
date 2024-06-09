@@ -17,12 +17,12 @@ const PACKAGE_LIST = {
     default: [
         ['discord.js', '^14.14.1'],
         ['cli-color', '^2.0.4'],
+        ['dotenv', '^16.4.5'],
+        ['zod', '^3.23.4'],
     ],
     kysely: [
         ['kysely', '^0.27.2'],
         ['mysql2', '^3.9.1'],
-        ['dotenv', '^16.4.5'],
-        ['zod', '^3.23.4'],
         ['kysely-codegen', ''],
     ],
     logger: [['strip-color', '^0.1.0']],
