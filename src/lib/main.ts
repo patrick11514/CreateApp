@@ -14,7 +14,7 @@ export class Main {
     /**
      * Execute shell command
      * @param command
-     * @returns Promise<true>
+     * @returns Promise<string>
      */
     async execute(command: string, path?: string) {
         return new Promise<string>((resolve, reject) => {
@@ -35,6 +35,7 @@ export class Main {
 
         if (osName == 'win32') {
             root = await this.execute('echo %cd%');
+            root = root.trim();
         } else {
             if (process.env.PWD) {
                 root = process.env.PWD;
