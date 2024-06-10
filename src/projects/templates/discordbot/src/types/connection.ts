@@ -6,6 +6,7 @@ import { env } from './env';
 const dialect = new MysqlDialect({
     pool: createPool({
         host: env.MYSQL_HOST,
+        port: env.MYSQL_PORT,
         user: env.MYSQL_USERNAME,
         password: env.MYSQL_PASSWORD,
         database: env.MYSQL_DATABASE,
