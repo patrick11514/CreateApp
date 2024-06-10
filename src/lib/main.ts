@@ -1,6 +1,7 @@
 import clc from 'cli-color';
 import { exec } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import Path from 'node:path';
 import { BaseProject } from './baseProject';
 import { Logger } from './logger';
@@ -16,19 +17,31 @@ export class Main {
      * @returns Promise<true>
      */
     async execute(command: string, path?: string) {
-        return new Promise<true>((resolve, reject) => {
-            exec(`${path ? `cd ${path} && ` : ''}${command}`, (error) => {
+        return new Promise<string>((resolve, reject) => {
+            exec(`${path ? `cd ${path} && ` : ''}${command}`, (error, stdout) => {
                 if (error) {
                     reject(error);
                 } else {
-                    resolve(true);
+                    resolve(stdout);
                 }
             });
         });
     }
 
     public async Start() {
-        const root = process.env.PWD as string;
+        const osName = os.platform();
+
+        let root: string;
+
+        if (osName == 'win32') {
+            root = await this.execute('echo %cd%');
+        } else {
+            if (process.env.PWD) {
+                root = process.env.PWD;
+            } else {
+                root = os.homedir();
+            }
+        }
 
         const pkg = require(Path.join(__dirname, '..', '..', 'package.json'));
 
@@ -50,7 +63,7 @@ export class Main {
         } as const);
 
         if (!fs.existsSync(path)) {
-            await this.execute(`mkdir -p ${path}`);
+            fs.mkdirSync(path, { recursive: true });
             Logger.log(`Created ${clc.cyan(path)}`);
         }
 
