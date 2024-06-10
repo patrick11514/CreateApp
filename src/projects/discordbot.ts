@@ -104,6 +104,7 @@ export default {
                 },
                 'src/types/types.ts',
                 'src/hooks.ts',
+                'README.md',
             ],
             {
                 '%%NAME%%': name,
