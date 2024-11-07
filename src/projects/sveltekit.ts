@@ -7,14 +7,26 @@ import { Main } from '../lib/main';
 import { PackageList, PackageManager } from '../lib/packageLib';
 import { prompt } from '../lib/prompt';
 import { copyFiles } from '../lib/utilts';
+import { adders } from '../lib/adders';
 
 const PACKAGE_LIST = {
+    eslint: [
+        ['@types/eslint', '^9.6.0'],
+        ['eslint', '^9.7.0'],
+        ['eslint-plugin-svelte', '^2.36.0'],
+        ['typescript-eslint', '^8.0.0'],
+    ],
     tailwindcss: [
         ['tailwindcss', '^3.4.1'],
         ['postcss', '^8.4.35'],
         ['autoprefixer', '^10.4.17'],
     ],
-    prettier: [['prettier-plugin-tailwindcss', '^0.5.11']],
+    prettier: [
+        ['prettier', '^3.3.2'],
+        ['prettier-plugin-svelte', '^3.2.6'],
+    ],
+    tailwindcss_prettier: [['prettier-plugin-tailwindcss', '^0.5.11']],
+    eslint_prettier: [['eslint-config-prettier', '^9.1.0']],
     defualt: [
         ['zod', '^3.22.4'],
         ['dotenv', '^16.4.5'],
@@ -51,32 +63,32 @@ export default {
     name: 'SvelteKit',
     key: 'sveltekit',
     function: async (main: Main, path: string, name: string) => {
-        const { create } = await import('create-svelte');
+        const { create } = await import('sv');
 
         Logger.log(`You've selected ${clc.red('SvelteKit Application')}`);
 
         console.log(Path.join(__dirname, '..'));
 
-        const { type, checking, features, svelte_5_beta } = await prompt([
+        const { type, checking } = await prompt([
             {
                 name: 'type',
                 type: 'select',
                 message: 'Which app do you want to create?',
                 choices: [
                     {
-                        name: 'default',
+                        name: 'demo',
                         message: 'Demo app',
                         hint: 'Default app with example project',
                     },
                     {
-                        name: 'skeleton',
-                        message: 'Skeleton project',
-                        hint: 'Clear skeleton app',
+                        name: 'minimal',
+                        message: 'Minimal project',
+                        hint: 'Clean project without any examples',
                     },
                     {
-                        name: 'skeletonlib',
+                        name: 'library',
                         message: 'Library project',
-                        hint: 'Skeleton app for library',
+                        hint: 'Project for library',
                     },
                 ],
             },
@@ -95,50 +107,46 @@ export default {
                     },
                     {
                         message: 'None',
-                        name: 'null',
+                        name: 'none',
                     },
                 ],
-            },
-            {
-                name: 'features',
-                type: 'multiselect',
-                message: 'Which additional options, do you want to use?',
-                choices: [
-                    {
-                        message: 'ESLint',
-                        name: 'eslint',
-                    },
-                    {
-                        message: 'Prettier',
-                        name: 'prettier',
-                    },
-                    {
-                        message: 'Playwright',
-                        name: 'playwright',
-                    },
-                    {
-                        message: 'Vitest',
-                        name: 'vitest',
-                    },
-                ],
-            },
-            {
-                name: 'svelte_5_beta',
-                type: 'confirm',
-                message: 'Use svelte beta?',
             },
         ] as const);
 
         await create(path, {
             name,
             template: type,
-            types: checking === 'null' ? null : checking,
-            eslint: features.includes('eslint'),
-            playwright: features.includes('playwright'),
-            prettier: features.includes('prettier'),
-            vitest: features.includes('vitest'),
-            svelte5: svelte_5_beta,
+            types: checking,
         });
+
+        const pm = new PackageManager(path);
+
+        //handle custom adders
+        //
+        const { features } = await prompt([
+            {
+                name: 'features',
+                type: 'multiselect',
+                message: 'Which additional options, do you want to use?',
+                choices: adders.map((adder) => {
+                    return {
+                        message: adder.name,
+                        name: adder.name,
+                        hint: adder.description,
+                    };
+                }),
+            },
+        ] as const);
+
+        const adderFunctions = Object.fromEntries(adders.map((adder) => [adder.name, adder.run]));
+
+        Logger.log('Adding features...');
+
+        const templateFolder = Path.join(__dirname, 'templates', 'sveltekit');
+
+        for (const feature of features) {
+            adderFunctions[feature]?.(path, pm, templateFolder);
+        }
 
         //append lock files to gitignore
         fs.appendFileSync(Path.join(path, '.gitignore'), '#lock files\npackage-lock.json\nyarn.lock\npnpm-lock.yaml');
@@ -185,8 +193,6 @@ export default {
             ],
         } as const);
 
-        const templateFolder = Path.join(__dirname, 'templates', 'sveltekit');
-
         if (features.includes('prettier')) {
             Logger.log('Creating prettier config...');
 
@@ -203,11 +209,9 @@ export default {
                     '%PLUGINS%': tools.includes('tailwindcss')
                         ? '"prettier-plugin-svelte", "prettier-plugin-tailwindcss"'
                         : '"prettier-plugin-svelte"',
-                }
+                },
             );
         }
-
-        const pm = new PackageManager(path);
 
         if (!fs.existsSync(Path.join(path, 'src', 'lib', 'server'))) {
             fs.mkdirSync(Path.join(path, 'src', 'lib', 'server'));
@@ -263,7 +267,7 @@ export default {
                     '%%COOKIES%%': tools.includes('cookies')
                         ? 'JWT_SECRET=text\n#v sekundách (10 min =  10 * 60)\n#expiruje pouze pokud uživatel danou dobu nic nedělá (neprochází stránky)\nCOOKIE_EXPIRE=1200\n#v sekundách (5 minut = 5 * 60)\nPUBLIC_CHECK_COOKIE_INTERVAL=300'
                         : '',
-                }
+                },
             );
         }
 
@@ -337,7 +341,7 @@ export default {
                 '%%VARIABLES%%': secrets.join(', '),
                 '%%IMPORTS%%': variablesImports,
                 '%%CODE%%': variablesCode,
-            }
+            },
         );
 
         const { adapter } = await prompt({
@@ -414,7 +418,7 @@ export default {
                     : '',
                 '%%ADAPTER%%': adapter,
                 '%%CONFIG%%': "\n        alias: {\n            '$/*': 'src/*',\n        },",
-            }
+            },
         );
 
         pm.write();

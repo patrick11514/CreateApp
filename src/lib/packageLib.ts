@@ -40,13 +40,44 @@ export class PackageManager {
         packageList.push(
             ...list.filter(([name]) => {
                 return !packageList.some(([packageName]) => packageName === name);
-            })
+            }),
         );
     }
 
     removePackage(name: string, dev = false) {
         const packageList = dev ? this.devPackageList : this.packageList;
         this.packageList = packageList.filter(([packageName]) => packageName !== name);
+    }
+
+    getPackages() {
+        return {
+            ...Object.fromEntries(
+                this.packageList.map((pkg) => {
+                    return [
+                        pkg[0],
+                        {
+                            version: pkg[1],
+                            dev: false,
+                        },
+                    ];
+                }),
+            ),
+            ...Object.fromEntries(
+                this.devPackageList.map((pkg) => {
+                    return [
+                        pkg[0],
+                        {
+                            version: pkg[1],
+                            dev: true,
+                        },
+                    ];
+                }),
+            ),
+        };
+    }
+
+    hasPackage(name: string) {
+        return this.packageList.some((pkg) => pkg[0] === name) || this.devPackageList.some((pkg) => pkg[0] === name);
     }
 
     write() {
