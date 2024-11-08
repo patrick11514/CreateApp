@@ -1,11 +1,11 @@
 <script lang="ts">
     import { API } from '$/lib/api';
     import { onMount } from 'svelte';
-    import type { PageServerData } from './$types';
+    import type { PageData } from './$types';
 
-    export let data: PageServerData;
+    let { data }: { data: PageData } = $props();
 
-    let message = '';
+    let message = $state('');
 
     const handleData = (response: (typeof data)['hi']) => {
         message = response;
@@ -17,13 +17,14 @@
         const res = await API.example();
         console.log(res);
 
-        handleData(await API.sayHi({
-            name: 'Patrick',
-            age: 21,
-        }));
+        handleData(
+            await API.sayHi({
+                name: 'Patrick',
+                age: 21
+            })
+        );
     });
 </script>
-
 
 <h1>Welcome to SvelteKit</h1>
 <p>

@@ -1,5 +1,5 @@
 import clc from 'cli-color';
-import { exec } from 'node:child_process';
+import { exec, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import Path from 'node:path';
@@ -23,6 +23,21 @@ export class Main {
                     reject(error);
                 } else {
                     resolve(stdout);
+                }
+            });
+        });
+    }
+
+    async spawn(command: string, args: string[]) {
+        return new Promise<void>((resolve, reject) => {
+            const process = spawn(command, args, {
+                stdio: 'inherit',
+            });
+            process.on('close', (code: number) => {
+                if (code == 0) {
+                    resolve();
+                } else {
+                    reject();
                 }
             });
         });

@@ -10,6 +10,7 @@ export class PackageManager {
     private devPackageList: PackageList = [];
     public scripts: Record<string, string> = {};
     public additional: Record<string, any> = {};
+    public name!: string;
 
     private path;
 
@@ -27,6 +28,7 @@ export class PackageManager {
         this.packageList = file.dependencies ? Object.entries(file.dependencies) : [];
         this.devPackageList = file.devDependencies ? Object.entries(file.devDependencies) : [];
         this.scripts = file.scripts;
+        this.name = file.name;
     }
 
     addPackage(name: string, version: string, dev = false) {
@@ -40,13 +42,43 @@ export class PackageManager {
         packageList.push(
             ...list.filter(([name]) => {
                 return !packageList.some(([packageName]) => packageName === name);
-            })
+            }),
         );
     }
 
     removePackage(name: string, dev = false) {
         const packageList = dev ? this.devPackageList : this.packageList;
         this.packageList = packageList.filter(([packageName]) => packageName !== name);
+    }
+
+    getPackages() {
+        return {
+            ...Object.fromEntries(
+                this.packageList.map((pkg) => {
+                    return [
+                        pkg[0],
+                        {
+                            version: pkg[1],
+                            dev: false,
+                        },
+                    ];
+                }),
+            ),
+            ...Object.fromEntries(
+                this.devPackageList.map((pkg) => {
+                    return [
+                        pkg[0],
+                        {
+                            version: pkg[1],
+                            dev: true,
+                        },
+                    ];
+                }),
+            ),
+        };
+    }
+    hasPackage(name: string) {
+        return this.packageList.some((pkg) => pkg[0] === name) || this.devPackageList.some((pkg) => pkg[0] === name);
     }
 
     write() {
@@ -60,6 +92,7 @@ export class PackageManager {
             [key: string]: any;
         };
 
+        file.name = this.name;
         file.dependencies = Object.fromEntries(this.packageList.sort());
         file.devDependencies = Object.fromEntries(this.devPackageList.sort());
         file.scripts = this.scripts;

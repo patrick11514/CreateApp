@@ -7,138 +7,71 @@ import { Main } from '../lib/main';
 import { PackageList, PackageManager } from '../lib/packageLib';
 import { prompt } from '../lib/prompt';
 import { copyFiles } from '../lib/utilts';
+import { spawn } from 'node:child_process';
 
 const PACKAGE_LIST = {
-    tailwindcss: [
-        ['tailwindcss', '^3.4.1'],
-        ['postcss', '^8.4.35'],
-        ['autoprefixer', '^10.4.17'],
-    ],
-    prettier: [['prettier-plugin-tailwindcss', '^0.5.11']],
     defualt: [
-        ['zod', '^3.22.4'],
+        ['zod', '^3.23.8'],
         ['dotenv', '^16.4.5'],
     ],
     cookies: [
         ['jsonwebtoken', '^9.0.2'],
         ['simple-json-db', '^2.0.0'],
-        ['uuid', '^9.0.1'],
+        ['uuid', '^11.0.2'],
     ],
     cookies_dev: [
-        ['@types/jsonwebtoken', '^9.0.5'],
-        ['@types/uuid', '^9.0.8'],
+        ['@types/jsonwebtoken', '^9.0.7'],
+        ['@types/uuid', '^10.0.0'],
     ],
     kysely: [
-        ['kysely', '^0.27.2'],
-        ['mysql2', '^3.9.1'],
+        ['kysely', '^0.27.4'],
+        ['mysql2', '^3.11.4'],
     ],
     svelte_api: [
         ['zod', '^3.22.4'],
-        ['@patrick115/sveltekitapi', '^1.2.2'],
+        ['@patrick115/sveltekitapi', '^1.2.11'],
     ],
 } as const satisfies Record<string, PackageList>;
 
 const adapterVersions = {
-    cloudflare: '^4.4.0',
-    'cloudflare-workers': '^2.4.0',
-    netlify: '^4.2.0',
-    node: '^5.0.1',
-    static: '^3.0.1',
-    vercel: '^5.3.0',
+    cloudflare: '^4.7.4',
+    'cloudflare-workers': '^2.5.5',
+    netlify: '^4.3.6',
+    node: '^5.2.9',
+    static: '^3.0.6',
+    vercel: '^5.4.7',
 } as const;
 
 export default {
     name: 'SvelteKit',
     key: 'sveltekit',
     function: async (main: Main, path: string, name: string) => {
-        const { create } = await import('create-svelte');
-
         Logger.log(`You've selected ${clc.red('SvelteKit Application')}`);
 
-        console.log(Path.join(__dirname, '..'));
-
-        const { type, checking, features, svelte_5_beta } = await prompt([
-            {
-                name: 'type',
-                type: 'select',
-                message: 'Which app do you want to create?',
-                choices: [
-                    {
-                        name: 'default',
-                        message: 'Demo app',
-                        hint: 'Default app with example project',
-                    },
-                    {
-                        name: 'skeleton',
-                        message: 'Skeleton project',
-                        hint: 'Clear skeleton app',
-                    },
-                    {
-                        name: 'skeletonlib',
-                        message: 'Library project',
-                        hint: 'Skeleton app for library',
-                    },
-                ],
-            },
-            {
-                name: 'checking',
-                type: 'select',
-                message: 'Which type checking do you want to use?',
-                choices: [
-                    {
-                        message: 'JS + JSDoc comments',
-                        name: 'checkjs',
-                    },
-                    {
-                        message: 'TypeScript',
-                        name: 'typescript',
-                    },
-                    {
-                        message: 'None',
-                        name: 'null',
-                    },
-                ],
-            },
-            {
-                name: 'features',
-                type: 'multiselect',
-                message: 'Which additional options, do you want to use?',
-                choices: [
-                    {
-                        message: 'ESLint',
-                        name: 'eslint',
-                    },
-                    {
-                        message: 'Prettier',
-                        name: 'prettier',
-                    },
-                    {
-                        message: 'Playwright',
-                        name: 'playwright',
-                    },
-                    {
-                        message: 'Vitest',
-                        name: 'vitest',
-                    },
-                ],
-            },
-            {
-                name: 'svelte_5_beta',
-                type: 'confirm',
-                message: 'Use svelte beta?',
-            },
-        ] as const);
-
-        await create(path, {
-            name,
-            template: type,
-            types: checking === 'null' ? null : checking,
-            eslint: features.includes('eslint'),
-            playwright: features.includes('playwright'),
-            prettier: features.includes('prettier'),
-            vitest: features.includes('vitest'),
-            svelte5: svelte_5_beta,
+        const { template } = await prompt({
+            name: 'template',
+            type: 'select',
+            message: 'Which app do you want to create?',
+            choices: [
+                {
+                    name: 'demo',
+                    message: 'Demo app',
+                    hint: 'Default app with example project',
+                },
+                {
+                    name: 'minimal',
+                    message: 'Minimal project',
+                    hint: 'Clean project without any examples',
+                },
+                {
+                    name: 'library',
+                    message: 'Library project',
+                    hint: 'Project for creating libraries',
+                },
+            ],
         });
+
+        await main.spawn('npx', ['sv', 'create', '--no-install', '--template', template, '--types', 'ts', path]);
 
         //append lock files to gitignore
         fs.appendFileSync(Path.join(path, '.gitignore'), '#lock files\npackage-lock.json\nyarn.lock\npnpm-lock.yaml');
@@ -148,10 +81,6 @@ export default {
             type: 'multiselect',
             message: 'Select additional things to install',
             choices: [
-                {
-                    message: 'TailwindCSS',
-                    name: 'tailwindcss',
-                },
                 {
                     message: 'Default Packages',
                     name: 'default',
@@ -187,62 +116,11 @@ export default {
 
         const templateFolder = Path.join(__dirname, 'templates', 'sveltekit');
 
-        if (features.includes('prettier')) {
-            Logger.log('Creating prettier config...');
-
-            copyFiles(
-                templateFolder,
-                path,
-                [
-                    {
-                        path: '.prettierrc',
-                        replace: ['%PLUGINS%'],
-                    },
-                ],
-                {
-                    '%PLUGINS%': tools.includes('tailwindcss')
-                        ? '"prettier-plugin-svelte", "prettier-plugin-tailwindcss"'
-                        : '"prettier-plugin-svelte"',
-                }
-            );
-        }
-
         const pm = new PackageManager(path);
+        pm.name = name;
 
         if (!fs.existsSync(Path.join(path, 'src', 'lib', 'server'))) {
             fs.mkdirSync(Path.join(path, 'src', 'lib', 'server'));
-        }
-
-        if (tools.includes('tailwindcss')) {
-            Logger.log('Adding tailwindcss...');
-            pm.mergePackages(PACKAGE_LIST.tailwindcss, true);
-
-            if (features.includes('prettier')) {
-                pm.mergePackages(PACKAGE_LIST.prettier, true);
-            }
-
-            copyFiles(templateFolder, path, [
-                'postcss.config.js',
-                'tailwind.config.js',
-                'src/app.css',
-                'src/routes/+layout.svelte',
-                'src/routes/+page.svelte',
-            ]);
-
-            pm.scripts.lint = 'prettier --plugin prettier-plugin-svelte --plugin prettier-plugin-tailwindcss --check .';
-            if (features.includes('eslint')) {
-                pm.scripts.lint += ' && eslint .';
-            }
-
-            pm.scripts.format =
-                'prettier --plugin prettier-plugin-svelte --plugin prettier-plugin-tailwindcss --write .';
-        } else {
-            pm.scripts.lint = 'prettier --plugin prettier-plugin-svelte --check .';
-            if (features.includes('eslint')) {
-                pm.scripts.lint += ' && eslint .';
-            }
-
-            pm.scripts.format = 'prettier --plugin prettier-plugin-svelte --write .';
         }
 
         if (tools.includes('default')) {
@@ -263,7 +141,7 @@ export default {
                     '%%COOKIES%%': tools.includes('cookies')
                         ? 'JWT_SECRET=text\n#v sekundách (10 min =  10 * 60)\n#expiruje pouze pokud uživatel danou dobu nic nedělá (neprochází stránky)\nCOOKIE_EXPIRE=1200\n#v sekundách (5 minut = 5 * 60)\nPUBLIC_CHECK_COOKIE_INTERVAL=300'
                         : '',
-                }
+                },
             );
         }
 
@@ -306,14 +184,14 @@ export default {
         }
 
         if (tools.includes('kysely-codegen')) {
-            pm.addPackage('kysely-codegen', '^0.11.0', true);
+            pm.addPackage('kysely-codegen', '^0.17.0', true);
             pm.scripts.genDatabaseSchema = 'kysely-codegen --out-file ./src/types/database.ts';
         }
 
         if (tools.includes('kit-api')) {
             pm.mergePackages(PACKAGE_LIST.svelte_api);
 
-            const suffix = tools.includes('tailwindcss') ? '_apitw' : '_api';
+            const suffix = pm.hasPackage('tailwindcss') ? '_apitw' : '_api';
 
             copyFiles(templateFolder, path, [
                 'src/routes/+layout.server.ts',
@@ -337,7 +215,7 @@ export default {
                 '%%VARIABLES%%': secrets.join(', '),
                 '%%IMPORTS%%': variablesImports,
                 '%%CODE%%': variablesCode,
-            }
+            },
         );
 
         const { adapter } = await prompt({
@@ -414,8 +292,27 @@ export default {
                     : '',
                 '%%ADAPTER%%': adapter,
                 '%%CONFIG%%': "\n        alias: {\n            '$/*': 'src/*',\n        },",
-            }
+            },
         );
+
+        //put own prettier config
+
+        if (pm.hasPackage('prettier')) {
+            try {
+                const file = Path.join(path, '.prettierrc');
+                const prettierCfg = fs.readFileSync(file, 'utf8');
+
+                const parsed = JSON.parse(prettierCfg);
+
+                parsed.useTabs = false;
+                parsed.tabWidth = 4;
+                parsed.printWidth = 180;
+
+                fs.writeFileSync(file, JSON.stringify(parsed, null, 4));
+            } catch (_) {
+                //Empty
+            }
+        }
 
         pm.write();
 
@@ -430,7 +327,7 @@ export default {
             await main.execute(`${main.packageProgram} install`, path);
         }
 
-        if (install && features.includes('prettier')) {
+        if (install && pm.hasPackage('prettier')) {
             const { format } = await prompt({
                 name: 'format',
                 message: 'Do you want to format files?',
