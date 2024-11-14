@@ -7,7 +7,6 @@ import { Main } from '../lib/main';
 import { PackageList, PackageManager } from '../lib/packageLib';
 import { prompt } from '../lib/prompt';
 import { copyFiles } from '../lib/utilts';
-import { spawn } from 'node:child_process';
 
 const PACKAGE_LIST = {
     defualt: [
@@ -143,6 +142,7 @@ export default {
                         : '',
                 },
             );
+            pm.mergePackages(PACKAGE_LIST.defualt);
         }
 
         if (tools.includes('authme')) {
@@ -256,8 +256,8 @@ export default {
             ],
         } as const);
 
-        pm.removePackage('@sveltejs/adapter-auto');
-        pm.addPackage(`@sveltejs/adapter-${adapter}`, adapterVersions[adapter]);
+        pm.removePackage('@sveltejs/adapter-auto', true);
+        pm.addPackage(`@sveltejs/adapter-${adapter}`, adapterVersions[adapter], true);
 
         if (adapter == 'node') {
             if (tools.includes('default')) {
