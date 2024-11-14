@@ -11,7 +11,6 @@ export class PackageManager {
     public scripts: Record<string, string> = {};
     public additional: Record<string, any> = {};
     public name!: string;
-
     private path;
 
     constructor(path: string) {
@@ -48,7 +47,9 @@ export class PackageManager {
 
     removePackage(name: string, dev = false) {
         const packageList = dev ? this.devPackageList : this.packageList;
-        this.packageList = packageList.filter(([packageName]) => packageName !== name);
+        const filtered = packageList.filter(([packageName]) => packageName !== name);
+        if (dev) this.devPackageList = filtered;
+        else this.packageList = filtered;
     }
 
     getPackages() {
