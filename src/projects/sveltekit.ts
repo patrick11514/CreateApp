@@ -28,7 +28,7 @@ const PACKAGE_LIST = {
     ],
     svelte_api: [
         ['zod', '^3.22.4'],
-        ['@patrick115/sveltekitapi', '^1.2.11'],
+        ['@patrick115/sveltekitapi', '^1.2.12'],
     ],
 } as const satisfies Record<string, PackageList>;
 

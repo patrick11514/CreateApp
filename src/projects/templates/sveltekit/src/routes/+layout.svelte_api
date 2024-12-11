@@ -1,9 +1,9 @@
 <script lang="ts">
     import { API } from '$/lib/api';
     import type { Snippet } from 'svelte';
-    import type { PageData } from './$types';
+    import type { LayoutData } from './$types';
 
-    let { children, data }: { children: Snippet, data: PageData } = $props();
+    let { children, data }: { children: Snippet, data: LayoutData } = $props();
 
     API.hydrateFromServer(data.api);
 </script>
