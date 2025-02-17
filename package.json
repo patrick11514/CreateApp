@@ -13,7 +13,7 @@
     },
     "keywords": [],
     "author": "Patrik Mintěl",
-    "license": "ISC",
+    "license": "MIT",
     "dependencies": {
         "cli-color": "^2.0.4",
         "enquirer": "^2.4.1",
