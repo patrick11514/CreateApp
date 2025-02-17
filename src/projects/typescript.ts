@@ -1,5 +1,5 @@
 import clc from 'cli-color';
-import fs from 'node:fs';
+import fs, { copyFile } from 'node:fs';
 import Path from 'node:path';
 import { Logger } from '../lib/logger';
 import { Main } from '../lib/main';
@@ -9,23 +9,29 @@ import { copyFiles } from '../lib/utilts';
 
 const PACKAGE_LIST = {
     defaultDev: [
-        ['ts-node-dev', '^2.0.0'],
-        ['typescript', '^5.4.4'],
-        ['@types/node', '^20.12.7'],
+        ['tsx', '^4.19.2'],
+        ['tsc-alias', '^1.8.10'],
+        ['typescript', '^5.7.3'],
+        ['@types/node', '^22.13.1'],
         ['@types/cli-color', '^2.0.6'],
     ],
     default: [
         ['cli-color', '^2.0.4'],
-        ['dotenv', '^16.4.5'],
-        ['zod', '^3.23.4'],
+        ['dotenv', '^16.4.7'],
+        ['zod', '^3.24.1'],
     ],
     kysely: [
-        ['kysely', '^0.27.2'],
-        ['mysql2', '^3.9.1'],
-        ['kysely-codegen', ''],
+        ['kysely', '^0.27.5'],
+        ['mysql2', '^3.12.0'],
     ],
     logger: [['strip-color', '^0.1.0']],
     loggerDev: [['@types/strip-color', '^0.1.2']],
+    eslint: [
+        ['eslint', '^9.20.0'],
+        ['@eslint/compat', '^1.2.6'],
+        ['@eslint/js', '^9.20.0'],
+        ['typescript-eslint', '^8.23.0'],
+    ],
 } as const satisfies Record<string, PackageList>;
 
 export default {
@@ -77,8 +83,8 @@ export default {
                         message: 'Zod',
                     },
                     {
-                        name: 'paths',
-                        message: 'Custom paths',
+                        name: 'eslint',
+                        message: 'Code linter',
                     },
                 ],
             },
@@ -100,7 +106,7 @@ export default {
             ],
             {
                 '%%NAME%%': name,
-            }
+            },
         );
 
         const pm = new PackageManager(path);
@@ -150,24 +156,24 @@ export default {
             pm.addPackage('node-fetch', '^3.3.0');
         }
 
-        if (dependencies.includes('paths')) {
-            pm.addPackage('module-alias', '^2.2.3');
-            pm.addPackage('tsconfig-paths', '^4.2.0', true);
-            pm.scripts.dev = 'ts-node-dev -r tsconfig-paths/register --respawn ./src/index.ts';
-            pm.scripts.start = 'node -r module-alias/register ./build/index.js';
-            pm.additional['_moduleAlias'] = {
-                $: './build',
-            };
-
-            copyFiles(templateFolder, path, ['tsconfig.json_path']);
-        } else {
-            copyFiles(templateFolder, path, ['tsconfig.json']);
-        }
+        copyFiles(templateFolder, path, ['tsconfig.json', '.gitignore']);
 
         if (dependencies.includes('prettier')) {
-            copyFiles(templateFolder, path, ['.prettierrc']);
+            copyFiles(templateFolder, path, ['.prettierrc', '.prettierignore']);
             pm.addPackage('prettier', '^3.1.0');
             pm.scripts.format = 'prettier --write .';
+        }
+
+        if (dependencies.includes('eslint')) {
+            if (dependencies.includes('prettier')) {
+                pm.addPackage('eslint-config-prettier', '^10.0.1', true);
+                copyFiles(templateFolder, path, ['eslint.config.mjs_prettier']);
+                pm.scripts.lint = 'prettier --check . && eslint src';
+            } else {
+                copyFiles(templateFolder, path, ['eslint.config.mjs']);
+                pm.scripts.lint = 'eslint src';
+            }
+            pm.mergePackages(PACKAGE_LIST.eslint, true);
         }
 
         if (dependencies.includes('simple-json-db')) {
@@ -180,7 +186,7 @@ export default {
 
         if (features.includes('logger')) {
             pm.mergePackages(PACKAGE_LIST.logger);
-            pm.mergePackages(PACKAGE_LIST.loggerDev);
+            pm.mergePackages(PACKAGE_LIST.loggerDev, true);
 
             copyFiles(templateFolder, path, ['src/index.ts_logger', 'src/lib/logger.ts']);
 
