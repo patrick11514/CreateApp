@@ -84,7 +84,8 @@ export default {
                     },
                     {
                         name: 'eslint',
-                        message: 'Code linter',
+                        message: 'Eslint',
+                        hint: 'Code linter',
                     },
                 ],
             },
