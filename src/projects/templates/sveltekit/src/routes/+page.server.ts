@@ -1,5 +1,6 @@
 import { Server } from '$/lib/server/server';
 import type { PageServerLoad } from './$types';
+import type { Actions } from '@sveltejs/kit';
 
 export const load = (async (ev) => {
     return {
@@ -9,3 +10,7 @@ export const load = (async (ev) => {
         }),
     };
 }) satisfies PageServerLoad;
+
+export const actions = {
+    default: Server.actions.form,
+} satisfies Actions;

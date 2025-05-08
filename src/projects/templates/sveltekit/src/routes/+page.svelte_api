@@ -1,9 +1,10 @@
 <script lang="ts">
     import { API } from '$/lib/api';
     import { onMount } from 'svelte';
-    import type { PageData } from './$types';
+    import type { PageProps } from './$types';
+    import { enhance } from '$app/forms';
 
-    let { data }: { data: PageData } = $props();
+    let { data, form }: PageProps = $props();
 
     let message = $state('');
 
@@ -31,3 +32,10 @@
     Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation
     {message}
 </p>
+
+{JSON.stringify(form)}
+<form method="POST" use:enhance>
+    <input type="text" name="name" placeholder="Enter Name" />
+    <input type="number" name="age" placeholder="Enter Age" />
+    <button type="submit">Submit</button>
+</form>
